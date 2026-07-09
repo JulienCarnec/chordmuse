@@ -1,55 +1,53 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { CHROMATIC, noteIndex } from '../../theory/notes';
 import { getScaleNoteSet } from '../../theory/scales';
 import { getChordNotes, identifyChord } from '../../theory/chords';
 import { useSampler } from '../../audio/useSampler';
 import styles from './PianoKeyboard.module.css';
 
-// Two octaves starting at C3
 const START_OCTAVE = 3;
 const NUM_OCTAVES = 2;
 
-const WHITE_NOTES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
-const BLACK_NOTES = ['C#', 'D#', null, 'F#', 'G#', 'A#', null];
+// For each white key position (0–6 within an octave), the black key to its right (null = none)
+// C  D  E  F  G  A  B
+const BLACK_AFTER = ['C#', 'D#', null, 'F#', 'G#', 'A#', null];
+const WHITE_NOTES  = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 
-function buildKeys() {
+// Build a flat ordered list of white keys + black key positions
+// Each entry: { note, octave, type: 'white' | 'black' }
+// Black keys are stored alongside the white key they follow so we can position them correctly
+function buildWhiteKeys() {
   const keys = [];
   for (let oct = START_OCTAVE; oct < START_OCTAVE + NUM_OCTAVES; oct++) {
     for (let i = 0; i < 7; i++) {
-      const white = WHITE_NOTES[i];
-      const black = BLACK_NOTES[i];
-      keys.push({ note: white, octave: oct, type: 'white' });
-      if (black) keys.push({ note: black, octave: oct, type: 'black' });
+      keys.push({ note: WHITE_NOTES[i], octave: oct, blackAfter: BLACK_AFTER[i] });
     }
   }
-  // Add closing C
-  keys.push({ note: 'C', octave: START_OCTAVE + NUM_OCTAVES, type: 'white' });
+  keys.push({ note: 'C', octave: START_OCTAVE + NUM_OCTAVES, blackAfter: null });
   return keys;
 }
 
-const ALL_KEYS = buildKeys();
+const WHITE_KEYS = buildWhiteKeys();
 
 export function PianoKeyboard({ scaleRoot, scaleKey, selectedChord, instrument = 'piano' }) {
   const { playNotes, playArpeggio } = useSampler();
   const [manualHighlight, setManualHighlight] = useState(new Set());
-  const [highlightMode, setHighlightMode] = useState('scale'); // 'scale' | 'chord' | 'manual'
+  const [highlightMode, setHighlightMode] = useState('scale');
 
-  const scaleNoteSet = scaleRoot && scaleKey
-    ? getScaleNoteSet(scaleRoot, scaleKey)
-    : new Set();
-
+  const scaleNoteSet = scaleRoot && scaleKey ? getScaleNoteSet(scaleRoot, scaleKey) : new Set();
   const chordNoteSet = selectedChord
     ? new Set(getChordNotes(selectedChord.root, selectedChord.typeKey).map(n => noteIndex(n)))
     : new Set();
 
-  function getHighlightClass(noteIdx) {
-    if (highlightMode === 'manual' && manualHighlight.has(noteIdx)) return styles.manual;
-    if (highlightMode === 'chord' && chordNoteSet.has(noteIdx)) return styles.chord;
-    if (highlightMode === 'scale' && scaleNoteSet.has(noteIdx)) return styles.scale;
-    return '';
+  function isHighlighted(noteIdx) {
+    if (highlightMode === 'manual') return manualHighlight.has(noteIdx);
+    if (highlightMode === 'chord') return chordNoteSet.has(noteIdx);
+    if (highlightMode === 'scale') return scaleNoteSet.has(noteIdx);
+    return false;
   }
 
-  function handleKeyClick(note, octave) {
+  function handleKeyClick(e, note, octave) {
+    e.stopPropagation();
     playNotes([`${note}${octave}`], '4n', instrument);
     if (highlightMode === 'manual') {
       const idx = noteIndex(note);
@@ -67,24 +65,23 @@ export function PianoKeyboard({ scaleRoot, scaleKey, selectedChord, instrument =
     else if (highlightMode === 'chord') noteIndices = [...chordNoteSet];
     else noteIndices = [...manualHighlight];
 
-    const notes = noteIndices.map(idx => {
-      const noteName = CHROMATIC[idx];
-      return `${noteName}${START_OCTAVE + 1}`;
-    }).sort((a, b) => noteIndex(a.slice(0, -1)) - noteIndex(b.slice(0, -1)));
+    const notes = [...noteIndices]
+      .sort((a, b) => a - b)
+      .map(idx => `${CHROMATIC[idx]}${START_OCTAVE + 1}`);
 
-    if (highlightMode === 'scale') {
-      playArpeggio(notes, 'up', '8n', instrument);
-    } else {
-      playNotes(notes, '2n', instrument);
-    }
+    if (highlightMode === 'scale') playArpeggio(notes, 'up', '8n', instrument);
+    else playNotes(notes, '2n', instrument);
   }
 
   const detectedChord = highlightMode === 'manual' && manualHighlight.size >= 2
     ? identifyChord([...manualHighlight])
     : null;
 
+  const WHITE_W = 36; // px per white key
+
   return (
     <div className={styles.wrapper}>
+      {/* Controls */}
       <div className={styles.controls}>
         <span className={styles.modeLabel}>Highlight:</span>
         {['scale', 'chord', 'manual'].map(mode => (
@@ -102,32 +99,35 @@ export function PianoKeyboard({ scaleRoot, scaleKey, selectedChord, instrument =
         )}
       </div>
 
-      <div className={styles.keyboard}>
-        {ALL_KEYS.filter(k => k.type === 'white').map(({ note, octave }, i) => {
-          const idx = noteIndex(note);
+      {/* Keyboard: single relative container, black keys positioned absolutely */}
+      <div
+        className={styles.keyboard}
+        style={{ width: WHITE_KEYS.length * WHITE_W }}
+      >
+        {WHITE_KEYS.map(({ note, octave, blackAfter }, wIdx) => {
+          const wNoteIdx = noteIndex(note);
+          const wHighlit = isHighlighted(wNoteIdx);
+
+          const bNoteIdx = blackAfter ? noteIndex(blackAfter) : -1;
+          const bHighlit = blackAfter ? isHighlighted(bNoteIdx) : false;
+
           return (
             <div
               key={`w-${note}${octave}`}
-              className={`${styles.white} ${getHighlightClass(idx)}`}
-              onClick={() => handleKeyClick(note, octave)}
+              className={`${styles.white} ${wHighlit ? styles[`hl_${highlightMode}`] : ''}`}
+              style={{ left: wIdx * WHITE_W, width: WHITE_W }}
+              onClick={e => handleKeyClick(e, note, octave)}
             >
-              <span className={styles.noteName}>{note}{octave === START_OCTAVE + 1 ? '' : ''}</span>
-            </div>
-          );
-        })}
-      </div>
+              <span className={styles.noteName}>{note}</span>
 
-      {/* Black keys are positioned absolutely over the white keys */}
-      <div className={styles.keyboardBlack}>
-        {ALL_KEYS.filter(k => k.type === 'black').map(({ note, octave }, i) => {
-          const idx = noteIndex(note);
-          return (
-            <div
-              key={`b-${note}${octave}`}
-              data-note={note}
-              className={`${styles.black} ${getHighlightClass(idx)}`}
-              onClick={() => handleKeyClick(note, octave)}
-            />
+              {/* Black key rendered inside its left white-key sibling, positioned to the right */}
+              {blackAfter && (
+                <div
+                  className={`${styles.black} ${bHighlit ? styles[`hl_${highlightMode}_b`] : ''}`}
+                  onClick={e => handleKeyClick(e, blackAfter, octave)}
+                />
+              )}
+            </div>
           );
         })}
       </div>

@@ -1,5 +1,4 @@
 .wrapper {
-  position: relative;
   user-select: none;
   padding: 8px 0 16px;
 }
@@ -8,7 +7,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 }
 
@@ -44,65 +43,65 @@
   color: #7c3aed;
 }
 
-/* ─── Keyboard layout ──────────────────────────────────────── */
+/* ─── Keyboard container ──────────────────────────────────── */
 
 .keyboard {
   position: relative;
-  display: flex;
-  height: 120px;
+  height: 130px;
+  /* width is set inline */
 }
 
-.keyboardBlack {
-  position: absolute;
-  top: 54px; /* below controls */
-  left: 0;
-  display: flex;
-  pointer-events: none;
-}
+/* ─── White keys ──────────────────────────────────────────── */
 
 .white {
-  position: relative;
-  width: 32px;
-  height: 120px;
+  position: absolute;
+  top: 0;
+  width: 36px;
+  height: 130px;
   border: 1px solid #9ca3af;
-  border-radius: 0 0 4px 4px;
+  border-radius: 0 0 5px 5px;
   background: #fff;
   cursor: pointer;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding-bottom: 4px;
-  transition: background 0.1s;
+  padding-bottom: 5px;
+  box-sizing: border-box;
   z-index: 1;
 }
 .white:hover { background: #f0f9ff; }
 
+.noteName {
+  font-size: 9px;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+/* ─── Black keys ──────────────────────────────────────────── */
+
 .black {
-  position: relative;
-  width: 22px;
-  height: 72px;
+  position: absolute;
+  /* sits on the right edge of the white key it belongs to, centred on the boundary */
+  right: -12px;
+  top: 0;
+  width: 24px;
+  height: 80px;
   background: #1f2937;
-  border-radius: 0 0 3px 3px;
+  border-radius: 0 0 4px 4px;
   cursor: pointer;
-  margin-left: -11px;
-  margin-right: -11px;
   z-index: 2;
-  pointer-events: all;
-  transition: background 0.1s;
+  box-sizing: border-box;
 }
 .black:hover { background: #374151; }
 
-.noteName {
-  font-size: 9px;
-  color: #6b7280;
-}
+/* ─── Highlight states ────────────────────────────────────── */
 
-/* ─── Highlight states ───────────────────────────────────────── */
+/* White key highlights */
+.hl_scale   { background: #bbf7d0 !important; }
+.hl_chord   { background: #bfdbfe !important; }
+.hl_manual  { background: #e9d5ff !important; }
 
-.white.scale    { background: #bbf7d0; }
-.white.chord    { background: #bfdbfe; }
-.white.manual   { background: #e9d5ff; }
-
-.black.scale    { background: #16a34a; }
-.black.chord    { background: #2563eb; }
-.black.manual   { background: #7c3aed; }
+/* Black key highlights */
+.hl_scale_b  { background: #16a34a !important; }
+.hl_chord_b  { background: #2563eb !important; }
+.hl_manual_b { background: #7c3aed !important; }

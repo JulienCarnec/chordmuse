@@ -51,6 +51,12 @@
   font-size: 13px;
   cursor: pointer;
 }
+.createBtn:disabled {
+  background: #d1d5db;
+  border-color: #d1d5db;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
 
 .tabs {
   display: flex;

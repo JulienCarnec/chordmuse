@@ -50,21 +50,15 @@
   cursor: pointer;
 }
 
-.picker {
-  display: flex;
-  gap: 2px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.rootSelect, .typeSelect {
+.chordSelect {
   font-size: 11px;
   padding: 2px 4px;
   border: 1px solid #d1d5db;
   border-radius: 4px;
   background: #fff;
   cursor: pointer;
-  max-width: 60px;
+  max-width: 110px;
+  width: 100%;
 }
 
 .splitBtn, .unsplitBtn {

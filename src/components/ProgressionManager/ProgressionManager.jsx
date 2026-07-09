@@ -69,7 +69,12 @@ export function ProgressionManager() {
             onChange={e => setNewSize(Number(e.target.value))}
             style={{ width: 56 }}
           />
-          <button className={styles.createBtn} onClick={createProgression}>+ New</button>
+          <button
+            className={styles.createBtn}
+            onClick={createProgression}
+            disabled={!newName.trim()}
+            title={!newName.trim() ? 'Enter a progression name first' : ''}
+          >+ New</button>
         </div>
       </section>
 
