@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react';
 import { useAppState } from '../../state/AppContext';
 import { usePlayback } from '../Playback/usePlayback';
 import { PianoKeyboard } from '../PianoKeyboard/PianoKeyboard';
@@ -14,6 +15,59 @@ export function TrackEditor() {
   } = state;
   const { play, stop } = usePlayback();
 
+  // ── Drag state ──────────────────────────────────────────────
+  const dragIndexRef = useRef(null);
+  const [dropIndex, setDropIndex] = useState(null);
+
+  function handleDragStart(e, idx) {
+    dragIndexRef.current = idx;
+    const ghost = document.createElement('div');
+    ghost.style.position = 'absolute';
+    ghost.style.top = '-9999px';
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, 0, 0);
+    setTimeout(() => document.body.removeChild(ghost), 0);
+    e.dataTransfer.effectAllowed = 'copyMove';
+  }
+
+  function handleDragOver(e, idx) {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    const slot = e.clientY < mid ? idx : idx + 1;
+    if (slot !== dropIndex) setDropIndex(slot);
+    e.dataTransfer.dropEffect = e.ctrlKey ? 'copy' : 'move';
+  }
+
+  function handleDragOverAfterLast(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const slot = track.length;
+    if (slot !== dropIndex) setDropIndex(slot);
+  }
+
+  function handleDrop(e, slot) {
+    e.preventDefault();
+    e.stopPropagation();
+    const from = dragIndexRef.current;
+    const copy = e.ctrlKey;
+    dragIndexRef.current = null;
+    setDropIndex(null);
+    if (from === null || from === undefined) return;
+    if (copy) {
+      dispatch({ type: 'COPY_TRACK_ITEM', from, to: slot });
+    } else {
+      dispatch({ type: 'REORDER_TRACK', from, to: slot });
+    }
+  }
+
+  function handleDragEnd() {
+    dragIndexRef.current = null;
+    setDropIndex(null);
+  }
+
+  // ── Playback ────────────────────────────────────────────────
   function addToTrack(progressionId) {
     dispatch({ type: 'ADD_TO_TRACK', progressionId });
   }
@@ -37,7 +91,6 @@ export function TrackEditor() {
     });
   }
 
-  // Piano keyboard props — same logic as ChordGrid
   const pianoPlaybackNotes = (isPlaying) ? (playbackActiveNotes?.length ? playbackActiveNotes : (playbackCursor?.notes ?? null)) : null;
 
   return (
@@ -88,34 +141,67 @@ export function TrackEditor() {
         </div>
 
         {/* Right: track arrangement */}
-        <div className={styles.arrangement}>
-          <h3 className={styles.subTitle}>Arrangement</h3>
+        <div
+          className={styles.arrangement}
+          onDragOver={e => e.preventDefault()}
+          onDrop={e => { if (dropIndex !== null) handleDrop(e, dropIndex); }}
+        >
+          <h3 className={styles.subTitle}>
+            Arrangement
+            <span className={styles.dragHint}>— drag to reorder · Ctrl+drag to copy</span>
+          </h3>
           {!track.length && (
             <p className={styles.hint}>Add progressions from the left panel.</p>
           )}
+
           {track.map(({ progressionId, repetitions }, idx) => {
             const prog = progressions[progressionId];
             const isCurrentProg = isPlaying && playbackCursor?.progressionId === progressionId;
+            const isDragging = dragIndexRef.current === idx;
+            const showDropBefore = dropIndex === idx;
+
             return (
-              <div key={idx} className={`${styles.trackItem} ${isCurrentProg ? styles.current : ''}`}>
-                <span className={styles.trackName}>{prog?.name ?? '?'}</span>
-                <label className={styles.repLabel}>×</label>
-                <input
-                  type="number"
-                  className={styles.repInput}
-                  value={repetitions}
-                  min={1} max={99}
-                  onChange={e => dispatch({ type: 'SET_TRACK_REPETITIONS', index: idx, repetitions: Number(e.target.value) })}
-                />
-                <button className={styles.moveBtn} disabled={idx === 0}
-                  onClick={() => dispatch({ type: 'REORDER_TRACK', from: idx, to: idx - 1 })}>↑</button>
-                <button className={styles.moveBtn} disabled={idx === track.length - 1}
-                  onClick={() => dispatch({ type: 'REORDER_TRACK', from: idx, to: idx + 1 })}>↓</button>
-                <button className={styles.removeBtn}
-                  onClick={() => dispatch({ type: 'REMOVE_FROM_TRACK', index: idx })}>×</button>
+              <div key={`${progressionId}-${idx}`} className={styles.trackItemOuter}>
+                {/* Drop indicator above this item */}
+                {showDropBefore && <div className={styles.dropIndicator} />}
+
+                <div
+                  className={`${styles.trackItem} ${isCurrentProg ? styles.current : ''} ${isDragging ? styles.itemDragging : ''}`}
+                  draggable
+                  onDragStart={e => handleDragStart(e, idx)}
+                  onDragOver={e => handleDragOver(e, idx)}
+                  onDrop={e => handleDrop(e, dropIndex ?? idx)}
+                  onDragEnd={handleDragEnd}
+                >
+                  {/* Drag handle */}
+                  <span className={styles.dragHandle} title="Drag to reorder">⠿</span>
+                  <span className={styles.trackName}>{prog?.name ?? '?'}</span>
+                  <label className={styles.repLabel}>×</label>
+                  <input
+                    type="number"
+                    className={styles.repInput}
+                    value={repetitions}
+                    min={1} max={99}
+                    onClick={e => e.stopPropagation()}
+                    onChange={e => dispatch({ type: 'SET_TRACK_REPETITIONS', index: idx, repetitions: Number(e.target.value) })}
+                  />
+                  <button
+                    className={styles.removeBtn}
+                    onClick={() => dispatch({ type: 'REMOVE_FROM_TRACK', index: idx })}
+                  >×</button>
+                </div>
               </div>
             );
           })}
+
+          {/* Drop zone after the last item */}
+          <div
+            className={`${styles.dropZoneEnd} ${dropIndex === track.length ? styles.dropZoneEndActive : ''}`}
+            onDragOver={handleDragOverAfterLast}
+            onDrop={e => handleDrop(e, track.length)}
+          >
+            {dropIndex === track.length && <div className={styles.dropIndicator} />}
+          </div>
         </div>
       </div>
 

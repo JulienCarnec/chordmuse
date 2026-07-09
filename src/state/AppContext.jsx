@@ -317,7 +317,16 @@ function reducer(state, action) {
     case 'REORDER_TRACK': {
       const track = [...state.track];
       const [moved] = track.splice(action.from, 1);
-      track.splice(action.to, 0, moved);
+      // Adjust destination after removal
+      const insertAt = action.from < action.to ? action.to - 1 : action.to;
+      track.splice(insertAt, 0, moved);
+      return { ...state, track };
+    }
+
+    case 'COPY_TRACK_ITEM': {
+      const track = [...state.track];
+      const clone = { ...track[action.from] };
+      track.splice(action.to, 0, clone);
       return { ...state, track };
     }
 
