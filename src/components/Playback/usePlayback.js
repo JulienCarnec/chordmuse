@@ -60,8 +60,11 @@ export function usePlayback() {
     const transport = Tone.getTransport();
     transport.bpm.value = bpm;
 
-    const [beatsPerBar] = timeSig.split('/').map(Number);
-    const barDur = Tone.Time(`${beatsPerBar}n`).toSeconds();
+    const [beatsPerBar, beatUnit] = timeSig.split('/').map(Number);
+    // One beat = one beatUnit note (e.g. quarter note for x/4, eighth note for x/8)
+    // A full bar = beatsPerBar beats
+    const oneBeatSec = Tone.Time(`${beatUnit}n`).toSeconds();
+    const barDur = oneBeatSec * beatsPerBar;
 
     let cursor = 0; // seconds
 
