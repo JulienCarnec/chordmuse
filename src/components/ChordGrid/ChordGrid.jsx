@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppState } from '../../state/AppContext';
 import { ChordCell } from './ChordCell';
 import { PatternControls } from './PatternControls';
@@ -31,6 +31,15 @@ export function ChordGrid() {
   const [globalNoteValue, setGlobalNoteValue] = useState('4n');
   const { playNotes } = useSampler();
   const { updateLiveParams } = usePlayback();
+
+  // ── Drag-and-drop state ────────────────────────────────────
+  // dragIndex: the global cell index currently being dragged (null = idle)
+  const dragIndexRef = useRef(null);
+  // dropIndex: insertion slot (0 = before first cell, n = after last cell)
+  // null = not dragging / no valid drop target
+  const [dropIndex, setDropIndex] = useState(null);
+  // Whether Ctrl was held at drag-end (copy mode)
+  const ctrlRef = useRef(false);
 
   // Keep liveParams in sync with global toolbar settings
   useEffect(() => {
@@ -82,6 +91,63 @@ export function ChordGrid() {
 
   const pianoPlaybackNotes = (isPlaying || isPaused) ? (playbackActiveNotes.length ? playbackActiveNotes : (playbackCursor?.notes ?? null)) : null;
   const pianoSelectedChord = !isPlaying ? (selectedCellChord ?? firstChord) : null;
+
+  // ── Drag handlers ──────────────────────────────────────────
+
+  function handleDragStart(e, globalIdx) {
+    dragIndexRef.current = globalIdx;
+    ctrlRef.current = false;
+    // Use a transparent drag image so the ghost is minimal
+    const ghost = document.createElement('div');
+    ghost.style.position = 'absolute';
+    ghost.style.top = '-9999px';
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, 0, 0);
+    setTimeout(() => document.body.removeChild(ghost), 0);
+    e.dataTransfer.effectAllowed = 'copyMove';
+  }
+
+  function handleDragOver(e, globalIdx) {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mid = rect.left + rect.width / 2;
+    // Insert before this cell if pointer is on left half, after if right half
+    const slot = e.clientX < mid ? globalIdx : globalIdx + 1;
+    if (slot !== dropIndex) setDropIndex(slot);
+    e.dataTransfer.dropEffect = e.ctrlKey ? 'copy' : 'move';
+  }
+
+  // The "+ add" button and the empty space after the last cell also accept drops
+  function handleDragOverAfterLast(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const slot = prog.cells.length;
+    if (slot !== dropIndex) setDropIndex(slot);
+    e.dataTransfer.dropEffect = e.ctrlKey ? 'copy' : 'move';
+  }
+
+  function handleDrop(e, slot) {
+    e.preventDefault();
+    e.stopPropagation();
+    const from = dragIndexRef.current;
+    const copy  = e.ctrlKey;
+    dragIndexRef.current = null;
+    setDropIndex(null);
+    if (from === null) return;
+    if (copy) {
+      dispatch({ type: 'COPY_CELL', progressionId: prog.id, fromIndex: from, toIndex: slot });
+    } else {
+      dispatch({ type: 'MOVE_CELL', progressionId: prog.id, fromIndex: from, toIndex: slot });
+    }
+  }
+
+  function handleDragEnd() {
+    dragIndexRef.current = null;
+    setDropIndex(null);
+  }
+
+  // ── Render ─────────────────────────────────────────────────
 
   return (
     <div className={styles.wrapper}>
@@ -154,7 +220,11 @@ export function ChordGrid() {
       </div>
 
       {/* ── Grid rows ─────────────────────────────────────── */}
-      <div className={styles.gridRows}>
+      <div
+        className={styles.gridRows}
+        onDragOver={e => e.preventDefault()}
+        onDrop={e => { if (dropIndex !== null) handleDrop(e, dropIndex); }}
+      >
         {rows.map((row, rowIdx) => {
           const isLastRow = rowIdx === rows.length - 1;
           return (
@@ -162,54 +232,80 @@ export function ChordGrid() {
               {row.map((cell, colIdx) => {
                 const globalIdx = rowIdx * CELLS_PER_ROW + colIdx;
                 const isSelected = selectedCellIndex === globalIdx;
+                const isDragging = dragIndexRef.current === globalIdx;
+                const showDropBefore = dropIndex === globalIdx;
+
                 return (
-                  <div
-                    key={cell.id}
-                    className={`${styles.cellWrapper} ${isSelected ? styles.cellSelected : ''}`}
-                    onClick={() => handleCellSelect(globalIdx, cell.chord)}
-                  >
-                    <ChordCell
-                      cell={cell}
-                      cellIndex={globalIdx}
-                      progressionId={prog.id}
-                      scaleRoot={scaleRoot}
-                      scaleKey={scaleKey}
-                      isCurrent={
-                        (isPlaying || isPaused) &&
-                        playbackCursor?.progressionId === prog.id &&
-                        playbackCursor?.cellIndex === globalIdx
-                      }
-                      onSetChord={(pid, ci, chord) => {
-                        dispatch({ type: 'SET_CELL_CHORD', progressionId: pid, cellIndex: ci, chord });
-                        handleCellSelect(ci, chord);
-                      }}
-                      onSplit={(pid, ci) =>
-                        dispatch({ type: 'SPLIT_CELL', progressionId: pid, cellIndex: ci })
-                      }
-                      onUnsplit={(pid, ci) =>
-                        dispatch({ type: 'UNSPLIT_CELL', progressionId: pid, cellIndex: ci })
-                      }
-                      onSetSubChord={(pid, ci, si, chord) =>
-                        dispatch({ type: 'SET_SUB_CELL_CHORD', progressionId: pid, cellIndex: ci, subIndex: si, chord })
-                      }
-                      onSetPlayStyle={(pid, ci, ps, nv) =>
-                        dispatch({ type: 'SET_CELL_PLAY_STYLE', progressionId: pid, cellIndex: ci, playStyle: ps, noteValue: nv })
-                      }
-                      onSetSubPlayStyle={(pid, ci, si, ps, nv) =>
-                        dispatch({ type: 'SET_SUB_CELL_PLAY_STYLE', progressionId: pid, cellIndex: ci, subIndex: si, playStyle: ps, noteValue: nv })
-                      }
-                    />
-                    <button
-                      className={styles.removeCell}
-                      title="Remove this cell"
-                      disabled={prog.cells.length <= 1}
-                      onClick={e => { e.stopPropagation(); removeCell(globalIdx); }}
-                    >×</button>
+                  <div key={cell.id} className={styles.cellOuter}>
+                    {/* Drop indicator line before this cell */}
+                    {showDropBefore && (
+                      <div className={styles.dropIndicator} />
+                    )}
+
+                    <div
+                      className={`${styles.cellWrapper} ${isSelected ? styles.cellSelected : ''} ${isDragging ? styles.cellDragging : ''}`}
+                      draggable
+                      onDragStart={e => handleDragStart(e, globalIdx)}
+                      onDragOver={e => handleDragOver(e, globalIdx)}
+                      onDrop={e => handleDrop(e, dropIndex ?? globalIdx)}
+                      onDragEnd={handleDragEnd}
+                      onClick={() => handleCellSelect(globalIdx, cell.chord)}
+                    >
+                      <ChordCell
+                        cell={cell}
+                        cellIndex={globalIdx}
+                        progressionId={prog.id}
+                        scaleRoot={scaleRoot}
+                        scaleKey={scaleKey}
+                        isCurrent={
+                          (isPlaying || isPaused) &&
+                          playbackCursor?.progressionId === prog.id &&
+                          playbackCursor?.cellIndex === globalIdx
+                        }
+                        onSetChord={(pid, ci, chord) => {
+                          dispatch({ type: 'SET_CELL_CHORD', progressionId: pid, cellIndex: ci, chord });
+                          handleCellSelect(ci, chord);
+                        }}
+                        onSplit={(pid, ci) =>
+                          dispatch({ type: 'SPLIT_CELL', progressionId: pid, cellIndex: ci })
+                        }
+                        onUnsplit={(pid, ci) =>
+                          dispatch({ type: 'UNSPLIT_CELL', progressionId: pid, cellIndex: ci })
+                        }
+                        onSetSubChord={(pid, ci, si, chord) =>
+                          dispatch({ type: 'SET_SUB_CELL_CHORD', progressionId: pid, cellIndex: ci, subIndex: si, chord })
+                        }
+                        onSetPlayStyle={(pid, ci, ps, nv) =>
+                          dispatch({ type: 'SET_CELL_PLAY_STYLE', progressionId: pid, cellIndex: ci, playStyle: ps, noteValue: nv })
+                        }
+                        onSetSubPlayStyle={(pid, ci, si, ps, nv) =>
+                          dispatch({ type: 'SET_SUB_CELL_PLAY_STYLE', progressionId: pid, cellIndex: ci, subIndex: si, playStyle: ps, noteValue: nv })
+                        }
+                      />
+                      <button
+                        className={styles.removeCell}
+                        title="Remove this cell"
+                        disabled={prog.cells.length <= 1}
+                        onClick={e => { e.stopPropagation(); removeCell(globalIdx); }}
+                      >×</button>
+                    </div>
                   </div>
                 );
               })}
+
+              {/* Drop indicator after last cell in row */}
+              {isLastRow && dropIndex === prog.cells.length && (
+                <div className={styles.dropIndicatorAfter} />
+              )}
+
               {isLastRow && (
-                <button className={styles.addCell} title="Add a cell" onClick={addCell}>+</button>
+                <button
+                  className={styles.addCell}
+                  title="Add a cell"
+                  onDragOver={handleDragOverAfterLast}
+                  onDrop={e => handleDrop(e, prog.cells.length)}
+                  onClick={addCell}
+                >+</button>
               )}
             </div>
           );

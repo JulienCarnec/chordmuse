@@ -170,6 +170,45 @@ function reducer(state, action) {
       };
     }
 
+    // Move cell from fromIndex to toIndex (insert before toIndex after removal).
+    case 'MOVE_CELL': {
+      const prog = state.progressions[action.progressionId];
+      if (!prog) return state;
+      const { fromIndex, toIndex } = action;
+      if (fromIndex === toIndex || fromIndex === toIndex - 1) return state;
+      const cells = [...prog.cells];
+      const [moved] = cells.splice(fromIndex, 1);
+      // After removal toIndex may shift by -1 if we removed before it
+      const insertAt = fromIndex < toIndex ? toIndex - 1 : toIndex;
+      cells.splice(insertAt, 0, moved);
+      return {
+        ...state,
+        progressions: { ...state.progressions, [action.progressionId]: { ...prog, cells } },
+      };
+    }
+
+    // Copy cell: insert a deep clone at toIndex without removing the source.
+    case 'COPY_CELL': {
+      const prog = state.progressions[action.progressionId];
+      if (!prog) return state;
+      const { fromIndex, toIndex } = action;
+      const cells = [...prog.cells];
+      const src = cells[fromIndex];
+      const clone = JSON.parse(JSON.stringify(src));
+      clone.id = `${action.progressionId}-cell-${Date.now()}`;
+      // Give each sub-cell a fresh identity too
+      if (clone.subCells) {
+        clone.subCells = clone.subCells.map((sc, i) =>
+          sc ? { ...sc } : sc
+        );
+      }
+      cells.splice(toIndex, 0, clone);
+      return {
+        ...state,
+        progressions: { ...state.progressions, [action.progressionId]: { ...prog, cells } },
+      };
+    }
+
     case 'RENAME_PROGRESSION':
       return {
         ...state,
