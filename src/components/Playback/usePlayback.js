@@ -144,9 +144,10 @@ export function usePlayback() {
           const evDur = ev.duration;
           const evVel = ev.velocity;
           // Dispatch per-note highlight on attack
+          const evDurMs = evDur * 1000;
           const part = new Tone.ToneEvent(() => {
             synth.triggerAttackRelease(evNotes, evDur, Tone.now(), evVel);
-            dispatch({ type: 'SET_PLAYBACK_NOTES', notes: evNotes });
+            dispatch({ type: 'SET_PLAYBACK_NOTES', notes: evNotes, durationMs: evDurMs });
           });
           part.start(t);
           partsRef.current.push(part);

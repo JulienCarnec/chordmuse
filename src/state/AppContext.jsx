@@ -60,7 +60,11 @@ function reducer(state, action) {
     case 'SET_PLAYBACK_CURSOR':
       return { ...state, playbackCursor: action.cursor };
     case 'SET_PLAYBACK_NOTES':
-      return { ...state, playbackActiveNotes: action.notes ?? [] };
+      return {
+        ...state,
+        playbackActiveNotes: action.notes ?? [],
+        playbackNotesDuration: action.durationMs ?? 900,
+      };
     case 'SET_SELECTED_CELL_CHORD':
       return { ...state, selectedCellChord: action.chord };
 

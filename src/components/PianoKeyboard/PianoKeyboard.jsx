@@ -72,11 +72,12 @@ function keyId(note, octave) { return `${note}${octave}`; }
 
 export function PianoKeyboard({
   scaleRoot, scaleKey,
-  selectedChord,         // { root, typeKey, octave, inversion }
+  selectedChord,               // { root, typeKey, octave, inversion }
   instrument = 'piano',
-  playbackNotes = null,  // array of exact "note+octave" strings currently sounding
+  playbackNotes = null,        // array of exact "note+octave" strings currently sounding
+  playbackNotesDuration = 900, // real note duration in ms — used to time key un-highlight
   resetKey,
-  onPickInversion,       // (inversionIndex: number) => void
+  onPickInversion,             // (inversionIndex: number) => void
 }) {
   const { playNotes, playArpeggio } = useSampler();
   // manualHighlight: Set of "note+octave" strings (per-key, not pitch-class)
@@ -101,34 +102,32 @@ export function PianoKeyboard({
   }, [resetKey]);
 
   // When playbackNotes changes (a new note fires), add it to sustainedNotes.
-  // Each note is removed from sustainedNotes after SUSTAIN_MS independently.
-  const SUSTAIN_MS = 900; // how long a note stays yellow after attack (generous)
+  // Each note is removed after the real note duration so keys un-highlight exactly when the sound stops.
   useEffect(() => {
     if (!playbackNotes?.length) return;
     const now = Date.now();
-    // Mark all incoming notes as attacked
     for (const id of playbackNotes) {
       attackedAt.current.set(id, now);
     }
-    // Add to sustained set
     setSustainedNotes(prev => {
       const next = new Set(prev);
       for (const id of playbackNotes) next.add(id);
       return next;
     });
-    // Schedule attack→sustain colour flip after ATTACK_MS
+    // Colour flip: attack → sustain after ATTACK_MS
     const t1 = setTimeout(() => setTick(v => v + 1), ATTACK_MS + 10);
-    // Schedule removal from sustainedNotes after SUSTAIN_MS
+    // Un-highlight exactly when the note ends
     const ids = [...playbackNotes];
+    const sustainMs = Math.max(ATTACK_MS + 20, playbackNotesDuration);
     const t2 = setTimeout(() => {
       setSustainedNotes(prev => {
         const next = new Set(prev);
         for (const id of ids) next.delete(id);
         return next;
       });
-    }, SUSTAIN_MS);
+    }, sustainMs);
     return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [playbackNotes]);
+  }, [playbackNotes, playbackNotesDuration]);
 
   useEffect(() => {
     const el = wrapperRef.current;

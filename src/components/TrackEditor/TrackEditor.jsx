@@ -7,7 +7,7 @@ export function TrackEditor() {
   const { state, dispatch } = useAppState();
   const {
     track, progressions, progressionOrder,
-    isPlaying, playbackCursor, playbackActiveNotes,
+    isPlaying, playbackCursor, playbackActiveNotes, playbackNotesDuration,
     bpm, timeSig, instrument, metronome,
     trackName, trackDescription,
     scaleRoot, scaleKey,
@@ -127,6 +127,7 @@ export function TrackEditor() {
           selectedChord={null}
           instrument={instrument}
           playbackNotes={pianoPlaybackNotes}
+          playbackNotesDuration={playbackNotesDuration}
         />
       </div>
     </div>
