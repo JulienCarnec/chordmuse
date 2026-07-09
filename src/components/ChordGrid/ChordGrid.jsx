@@ -36,7 +36,7 @@ export function ChordGrid() {
   const [globalPlayStyle, setGlobalPlayStyle] = useState('block');
   const [globalNoteValue, setGlobalNoteValue] = useState('4n');
   const { playNotes } = useSampler();
-  const { updateLiveParams } = usePlayback();
+  const { updateLiveParams, updateLiveCells } = usePlayback();
 
   // ── Drag-and-drop state ────────────────────────────────────
   // dragIndex: the global cell index currently being dragged (null = idle)
@@ -51,6 +51,13 @@ export function ChordGrid() {
   useEffect(() => {
     updateLiveParams({ playStyle: globalPlayStyle, noteValue: globalNoteValue });
   }, [globalPlayStyle, globalNoteValue, updateLiveParams]);
+
+  // Push updated cells into the live playback engine when chords/cells change mid-play
+  useEffect(() => {
+    if ((isPlaying || isPaused) && prog?.cells) {
+      updateLiveCells(prog.cells);
+    }
+  }, [prog?.cells, isPlaying, isPaused, updateLiveCells]);
 
   if (!prog) {
     return (

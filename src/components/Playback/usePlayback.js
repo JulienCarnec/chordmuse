@@ -59,14 +59,17 @@ const liveParams = {
 export function usePlayback() {
   const { state, dispatch } = useAppState();
   const { getSynth } = useSampler();
-  const partsRef = useRef([]);
+  // Scheduled Tone.js events — disposed on stop
+  const eventsRef = useRef([]);
   const metRef = useRef(null);
+  // Holds the latest play context so the loop closure can re-read it
+  const playCtxRef = useRef(null);
 
   const stop = useCallback(() => {
     Tone.getTransport().stop();
     Tone.getTransport().cancel();
-    partsRef.current.forEach(p => { try { p.dispose(); } catch {} });
-    partsRef.current = [];
+    eventsRef.current.forEach(p => { try { p.dispose(); } catch {} });
+    eventsRef.current = [];
     if (metRef.current) {
       metRef.current.loop?.dispose();
       metRef.current.clickSynth?.dispose();
@@ -74,8 +77,10 @@ export function usePlayback() {
       metRef.current.bassSynth?.dispose();
       metRef.current = null;
     }
+    playCtxRef.current = null;
     dispatch({ type: 'SET_PLAYING', playing: false });
     dispatch({ type: 'SET_PLAYBACK_CURSOR', cursor: null });
+    dispatch({ type: 'SET_PLAYBACK_NOTES', notes: [], durationMs: 0 });
   }, [dispatch]);
 
   const pause = useCallback(() => {
@@ -121,14 +126,25 @@ export function usePlayback() {
     const oneBeatSec = Tone.Time(`${beatUnit}n`).toSeconds();
     const barDur = oneBeatSec * beatsPerBar;
 
-    const segments = buildSegments(cells, barDur);
-    const totalDur = segments.reduce((s, g) => s + g.dur, 0);
+    // Store play context so the loop closure always reads the latest cells
+    playCtxRef.current = { cells, progressionId, barDur, synth };
 
-    function scheduleSegments(timeOffset) {
+    /**
+     * Schedule one full pass of the current cells starting at `timeOffset`.
+     * Reads cells live from playCtxRef so chord/cell edits mid-play take
+     * effect on the next loop iteration.
+     * Returns the transport time at which the pass ends.
+     */
+    function schedulePass(timeOffset) {
+      const ctx = playCtxRef.current;
+      if (!ctx) return timeOffset;
+      const segments = buildSegments(ctx.cells, ctx.barDur);
+      if (!segments.length) return timeOffset;
+      const totalDur = segments.reduce((s, g) => s + g.dur, 0);
+
       let cursor = timeOffset;
       for (const seg of segments) {
         const { notes, dur, cellIndex } = seg;
-        // Read live params at schedule time so mid-play changes take effect
         const ps  = seg.playStyle ?? liveParams.playStyle.current;
         const nv  = seg.noteValue  ?? liveParams.noteValue.current;
         const ao  = liveParams.arpOctaves.current;
@@ -137,45 +153,53 @@ export function usePlayback() {
         const events = buildEvents(notes, ps, nv, dur, ao, ar, hum);
 
         for (const ev of events) {
-          // Apply timing jitter — keep within cell bounds
           const rawT = cursor + ev.time + ev.jitter;
           const t = Math.max(cursor, rawT);
           const evNotes = ev.notes;
           const evDur = ev.duration;
           const evVel = ev.velocity;
-          // Dispatch per-note highlight on attack
           const evDurMs = evDur * 1000;
-          const part = new Tone.ToneEvent(() => {
-            synth.triggerAttackRelease(evNotes, evDur, Tone.now(), evVel);
+          const toneEv = new Tone.ToneEvent(() => {
+            ctx.synth.triggerAttackRelease(evNotes, evDur, Tone.now(), evVel);
             dispatch({ type: 'SET_PLAYBACK_NOTES', notes: evNotes, durationMs: evDurMs });
           });
-          part.start(t);
-          partsRef.current.push(part);
+          toneEv.start(t);
+          eventsRef.current.push(toneEv);
         }
 
-        // Cursor marker for piano roll (cell-level, for cell outline highlight)
+        // Cell cursor marker
         const ci = cellIndex;
         const noteNames = notes.map(n => n.replace(/\d+$/, ''));
-        const markerEvent = new Tone.ToneEvent(() => {
-          dispatch({ type: 'SET_PLAYBACK_CURSOR', cursor: { progressionId, cellIndex: ci, notes: noteNames } });
+        const marker = new Tone.ToneEvent(() => {
+          dispatch({ type: 'SET_PLAYBACK_CURSOR', cursor: { progressionId: ctx.progressionId, cellIndex: ci, notes: noteNames } });
         });
-        markerEvent.start(cursor);
-        partsRef.current.push(markerEvent);
+        marker.start(cursor);
+        eventsRef.current.push(marker);
 
         cursor += dur;
       }
-      return cursor;
+      return cursor; // = timeOffset + totalDur
     }
 
-    let loopStart = 0;
-    scheduleSegments(loopStart);
+    // Schedule the first pass at t=0
+    const firstEnd = schedulePass(0);
 
-    const loopEvent = new Tone.Loop((time) => {
-      loopStart += totalDur;
-      scheduleSegments(loopStart);
-    }, totalDur);
-    loopEvent.start(totalDur);
-    partsRef.current.push(loopEvent);
+    // At the boundary of each pass: dispose old events, re-read cells, schedule next pass
+    function scheduleLoop(nextStart) {
+      if (!playCtxRef.current) return;
+      const loopMarker = new Tone.ToneEvent(() => {
+        if (!playCtxRef.current) return;
+        // Dispose all scheduled events (they have already fired or will be replaced)
+        eventsRef.current.forEach(p => { try { p.dispose(); } catch {} });
+        eventsRef.current = [];
+        const nextEnd = schedulePass(Tone.getTransport().seconds);
+        scheduleLoop(nextEnd);
+      });
+      // Fire the marker ~50 ms before the boundary so events land in time
+      loopMarker.start(Math.max(0, nextStart - 0.05));
+      eventsRef.current.push(loopMarker);
+    }
+    scheduleLoop(firstEnd);
 
     if (metronome?.enabled) {
       setupMetronome(metRef, metronome.mode, bpm, timeSig);
@@ -194,7 +218,14 @@ export function usePlayback() {
     if (params.humanize   !== undefined) liveParams.humanize.current   = params.humanize;
   }, []);
 
-  return { play, stop, pause, resume, updateLiveParams };
+  // Update the live cells ref so the next loop iteration picks up chord/cell changes
+  const updateLiveCells = useCallback((cells) => {
+    if (playCtxRef.current) {
+      playCtxRef.current.cells = cells;
+    }
+  }, []);
+
+  return { play, stop, pause, resume, updateLiveParams, updateLiveCells };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

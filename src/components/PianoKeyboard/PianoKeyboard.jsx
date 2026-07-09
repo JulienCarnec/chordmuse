@@ -94,6 +94,8 @@ export function PianoKeyboard({
   const [sustainedNotes, setSustainedNotes] = useState(new Set());
   // ticker forces re-render once ATTACK_MS passes to switch attack→sustain colour
   const [, setTick] = useState(0);
+  // generation counter — incremented on stop/clear so stale timeouts become no-ops
+  const genRef = useRef(0);
 
   // Clear manual highlights and exit inversion mode whenever the selected cell changes
   useEffect(() => {
@@ -101,10 +103,15 @@ export function PianoKeyboard({
     setPickingInversion(false);
   }, [resetKey]);
 
-  // When playbackNotes changes (a new note fires), add it to sustainedNotes.
-  // Each note is removed after the real note duration so keys un-highlight exactly when the sound stops.
+  // When playbackNotes becomes empty/null (stop/pause), immediately clear all sustain state.
   useEffect(() => {
-    if (!playbackNotes?.length) return;
+    if (!playbackNotes?.length) {
+      genRef.current++;           // invalidate any pending sustain timers
+      attackedAt.current.clear();
+      setSustainedNotes(new Set());
+      return;
+    }
+    const gen = genRef.current;
     const now = Date.now();
     for (const id of playbackNotes) {
       attackedAt.current.set(id, now);
@@ -115,11 +122,15 @@ export function PianoKeyboard({
       return next;
     });
     // Colour flip: attack → sustain after ATTACK_MS
-    const t1 = setTimeout(() => setTick(v => v + 1), ATTACK_MS + 10);
+    const t1 = setTimeout(() => {
+      if (genRef.current !== gen) return;
+      setTick(v => v + 1);
+    }, ATTACK_MS + 10);
     // Un-highlight exactly when the note ends
     const ids = [...playbackNotes];
     const sustainMs = Math.max(ATTACK_MS + 20, playbackNotesDuration);
     const t2 = setTimeout(() => {
+      if (genRef.current !== gen) return;
       setSustainedNotes(prev => {
         const next = new Set(prev);
         for (const id of ids) next.delete(id);
