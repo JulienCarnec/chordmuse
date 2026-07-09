@@ -88,6 +88,39 @@ function reducer(state, action) {
       };
     }
 
+    case 'ADD_CELL': {
+      const prog = state.progressions[action.progressionId];
+      if (!prog) return state;
+      const newCell = {
+        id: `${action.progressionId}-cell-${Date.now()}`,
+        chord: null,
+        split: false,
+        subCells: [null, null],
+      };
+      return {
+        ...state,
+        progressions: {
+          ...state.progressions,
+          [action.progressionId]: { ...prog, cells: [...prog.cells, newCell] },
+        },
+      };
+    }
+
+    case 'REMOVE_CELL': {
+      const prog = state.progressions[action.progressionId];
+      if (!prog || prog.cells.length <= 1) return state;
+      return {
+        ...state,
+        progressions: {
+          ...state.progressions,
+          [action.progressionId]: {
+            ...prog,
+            cells: prog.cells.filter((_, i) => i !== action.cellIndex),
+          },
+        },
+      };
+    }
+
     case 'RENAME_PROGRESSION':
       return {
         ...state,
