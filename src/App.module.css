@@ -1,0 +1,29 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  color: #1f2937;
+  background: #fff;
+}
+
+.editorLayout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.main {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.trackLayout {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}

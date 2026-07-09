@@ -1,0 +1,26 @@
+.container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.label {
+  font-weight: 600;
+  font-size: 13px;
+  color: #374151;
+}
+
+.select {
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.fitScale {
+  background-color: #22c55e;
+  color: #fff;
+}

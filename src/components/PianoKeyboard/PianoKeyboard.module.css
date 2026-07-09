@@ -1,0 +1,108 @@
+.wrapper {
+  position: relative;
+  user-select: none;
+  padding: 8px 0 16px;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.modeLabel { font-size: 12px; color: #6b7280; }
+
+.modeBtn {
+  padding: 3px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #f9fafb;
+  font-size: 12px;
+  cursor: pointer;
+}
+.modeBtn.active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}
+
+.playBtn {
+  padding: 3px 12px;
+  border: 1px solid #22c55e;
+  border-radius: 4px;
+  background: #22c55e;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.detectedChord {
+  font-size: 13px;
+  font-weight: 600;
+  color: #7c3aed;
+}
+
+/* ─── Keyboard layout ──────────────────────────────────────── */
+
+.keyboard {
+  position: relative;
+  display: flex;
+  height: 120px;
+}
+
+.keyboardBlack {
+  position: absolute;
+  top: 54px; /* below controls */
+  left: 0;
+  display: flex;
+  pointer-events: none;
+}
+
+.white {
+  position: relative;
+  width: 32px;
+  height: 120px;
+  border: 1px solid #9ca3af;
+  border-radius: 0 0 4px 4px;
+  background: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 4px;
+  transition: background 0.1s;
+  z-index: 1;
+}
+.white:hover { background: #f0f9ff; }
+
+.black {
+  position: relative;
+  width: 22px;
+  height: 72px;
+  background: #1f2937;
+  border-radius: 0 0 3px 3px;
+  cursor: pointer;
+  margin-left: -11px;
+  margin-right: -11px;
+  z-index: 2;
+  pointer-events: all;
+  transition: background 0.1s;
+}
+.black:hover { background: #374151; }
+
+.noteName {
+  font-size: 9px;
+  color: #6b7280;
+}
+
+/* ─── Highlight states ───────────────────────────────────────── */
+
+.white.scale    { background: #bbf7d0; }
+.white.chord    { background: #bfdbfe; }
+.white.manual   { background: #e9d5ff; }
+
+.black.scale    { background: #16a34a; }
+.black.chord    { background: #2563eb; }
+.black.manual   { background: #7c3aed; }

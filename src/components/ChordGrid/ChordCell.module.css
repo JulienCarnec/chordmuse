@@ -1,0 +1,86 @@
+.cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 90px;
+  min-height: 80px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 6px 4px;
+  background: #f9fafb;
+  position: relative;
+  transition: background 0.15s;
+}
+
+.cell.current {
+  box-shadow: 0 0 0 3px #3b82f6;
+}
+
+.split {
+  display: flex;
+  flex-direction: row;
+  min-width: 180px;
+  padding: 0;
+  overflow: hidden;
+  gap: 0;
+}
+
+.subCell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 4px;
+  border-right: 1px dashed #d1d5db;
+}
+.subCell:last-child { border-right: none; }
+
+.label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.empty {
+  font-size: 18px;
+  color: #9ca3af;
+  cursor: pointer;
+}
+
+.picker {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.rootSelect, .typeSelect {
+  font-size: 11px;
+  padding: 2px 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  max-width: 60px;
+}
+
+.splitBtn, .unsplitBtn {
+  font-size: 11px;
+  padding: 1px 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  background: #f3f4f6;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+/* Role colour backgrounds */
+.inScale      { background: #dcfce7; border-color: #22c55e; }
+.in_scale     { background: #dcfce7; }
+.dominantI,   .dominant_I   { background: #fef9c3; border-color: #eab308; }
+.dominantII,  .dominant_II  { background: #ffedd5; border-color: #f97316; }
+.subdominantI, .subdominant_I  { background: #dbeafe; border-color: #3b82f6; }
+.subdominantII, .subdominant_II { background: #f3e8ff; border-color: #a855f7; }
