@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import * as Tone from 'tone';
-import { CHROMATIC, ENHARMONIC, noteIndex, noteName } from '../../theory/notes';
+import { CHROMATIC, ENHARMONIC, noteIndex, noteName, preferFlat } from '../../theory/notes';
 import { getScaleNoteSet, getScaleNotes } from '../../theory/scales';
 import { getChordNotes, getChordNotesVoiced, identifyChord } from '../../theory/chords';
 import { useSampler } from '../../audio/useSampler';
@@ -253,8 +253,9 @@ export function PianoKeyboard({
   }
 
   // Detect chord from manual highlights (pitch-class level, strip octave)
+  const useFlat = preferFlat(scaleRoot, scaleKey);
   const manualPitchClasses = [...manualHighlight].map(id => noteIndex(id.replace(/\d+$/, '')));
-  const detectedChord = manualPitchClasses.length >= 2 ? identifyChord(manualPitchClasses) : null;
+  const detectedChord = manualPitchClasses.length >= 2 ? identifyChord(manualPitchClasses, useFlat) : null;
   // Label: chord name or note list + "(unknown)"
   const detectedLabel = detectedChord
     ? `→ ${detectedChord.label}`

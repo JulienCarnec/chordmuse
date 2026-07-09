@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { CHROMATIC, noteIndex, noteName } from '../../theory/notes';
-import { CHORD_TYPES, chordLabel, getChordRole } from '../../theory/chords';
+import { CHROMATIC, noteIndex, noteName, preferFlat, displayNote } from '../../theory/notes';
+import { CHORD_TYPES, chordLabel, chordLabelDisplay, getChordRole } from '../../theory/chords';
 import { PatternControls } from './PatternControls';
 import styles from './ChordCell.module.css';
 
@@ -32,11 +32,12 @@ const ROLE_ORDER = ['in-scale', 'dominant-I', 'dominant-II', 'subdominant-I', 's
 
 // Build all root+type combos sorted by role relevance
 function buildOptions(scaleRoot, scaleKey) {
+  const useFlat = preferFlat(scaleRoot, scaleKey);
   const combos = [];
   for (const root of CHROMATIC) {
     for (const [typeKey] of Object.entries(CHORD_TYPES)) {
       const role = getChordRole(root, typeKey, scaleRoot, scaleKey);
-      const base  = chordLabel(root, typeKey);
+      const base  = chordLabelDisplay(root, typeKey, useFlat);
       const prefix = ROLE_PREFIX[role] ?? '';
       combos.push({ root, typeKey, role, label: `${prefix}${base}` });
     }
@@ -51,25 +52,27 @@ function buildOptions(scaleRoot, scaleKey) {
 }
 
 /** Derive the bass note name for a chord at a given inversion. */
-function bassNoteName(chord) {
+function bassNoteName(chord, useFlat) {
   if (!chord || !chord.inversion) return null;
   const def = CHORD_TYPES[chord.typeKey];
   if (!def) return null;
   const inv = chord.inversion % def.intervals.length;
   const bassInterval = def.intervals[inv];
   const rootIdx = noteIndex(chord.root);
-  return noteName(((rootIdx + bassInterval) % 12 + 12) % 12);
+  const sharp = noteName(((rootIdx + bassInterval) % 12 + 12) % 12);
+  return displayNote(sharp, useFlat);
 }
 
 /** Label with optional slash notation for inversions: e.g. "C/E" */
-function cellLabel(chord) {
-  const base = chordLabel(chord.root, chord.typeKey);
-  const bass = bassNoteName(chord);
-  if (bass && bass !== chord.root) return `${base}/${bass}`;
+function cellLabel(chord, useFlat) {
+  const base = chordLabelDisplay(chord.root, chord.typeKey, useFlat);
+  const bass = bassNoteName(chord, useFlat);
+  const displayRoot = displayNote(chord.root, useFlat);
+  if (bass && bass !== displayRoot) return `${base}/${bass}`;
   return base;
 }
 
-function ChordPicker({ value, scaleRoot, scaleKey, onChange }) {
+function ChordPicker({ value, scaleRoot, scaleKey, useFlat, onChange }) {
   const options = buildOptions(scaleRoot, scaleKey);
   const currentVal = value ? `${value.root}|${value.typeKey}` : '';
 
@@ -147,6 +150,8 @@ export function ChordCell({
     return getChordRole(chord.root, chord.typeKey, scaleRoot, scaleKey);
   }
 
+  const useFlat = preferFlat(scaleRoot, scaleKey);
+
   if (cell.split) {
     return (
       <div className={`${styles.cell} ${styles.split} ${isCurrent ? styles.current : ''}`}>
@@ -157,13 +162,14 @@ export function ChordCell({
           return (
             <div key={si} className={`${styles.subCell} ${ROLE_STYLES[role(sc)] ?? ''}`}>
               {sc
-                ? <span className={styles.label}>{cellLabel(sc)}</span>
+                ? <span className={styles.label}>{cellLabel(sc, useFlat)}</span>
                 : <span className={styles.empty}>+</span>
               }
               <ChordPicker
                 value={sc}
                 scaleRoot={scaleRoot}
                 scaleKey={scaleKey}
+                useFlat={useFlat}
                 onChange={chord => onSetSubChord(progressionId, cellIndex, si, chord)}
               />
               <div className={styles.cellFooter}>
@@ -205,13 +211,14 @@ export function ChordCell({
   return (
     <div className={`${styles.cell} ${ROLE_STYLES[r] ?? ''} ${isCurrent ? styles.current : ''}`}>
       {cell.chord
-        ? <span className={styles.label}>{cellLabel(cell.chord)}</span>
+        ? <span className={styles.label}>{cellLabel(cell.chord, useFlat)}</span>
         : <span className={styles.empty}>+</span>
       }
       <ChordPicker
         value={cell.chord}
         scaleRoot={scaleRoot}
         scaleKey={scaleKey}
+        useFlat={useFlat}
         onChange={chord => onSetChord(progressionId, cellIndex, chord)}
       />
       <div className={styles.cellFooter}>

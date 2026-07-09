@@ -1,4 +1,4 @@
-import { noteIndex, noteName } from './notes';
+import { noteIndex, noteName, displayNote } from './notes';
 import { getScaleNotes } from './scales';
 
 /**
@@ -70,7 +70,8 @@ export function getChordNotesVoiced(root, typeKey, baseOctave = 4, inversion = 0
 }
 
 /**
- * Build a chord label, e.g. "Cmaj7"
+ * Build a chord label using internal (sharp) root name. e.g. "Cmaj7"
+ * Use chordLabelDisplay() for UI display with enharmonic awareness.
  */
 export function chordLabel(root, typeKey) {
   const def = CHORD_TYPES[typeKey];
@@ -78,6 +79,19 @@ export function chordLabel(root, typeKey) {
   if (typeKey === 'maj') return root;
   if (typeKey === 'min') return `${root}m`;
   return `${root}${def.name}`;
+}
+
+/**
+ * Build a chord label for display, respecting flat/sharp preference.
+ * useFlat: pass preferFlat(scaleRoot, scaleKey) from the caller.
+ */
+export function chordLabelDisplay(root, typeKey, useFlat) {
+  const r = displayNote(root, useFlat);
+  const def = CHORD_TYPES[typeKey];
+  if (!def) return r;
+  if (typeKey === 'maj') return r;
+  if (typeKey === 'min') return `${r}m`;
+  return `${r}${def.name}`;
 }
 
 /**
@@ -132,9 +146,10 @@ export function getChordRole(chordRoot, chordType, scaleRoot, scaleKey) {
 
 /**
  * Given a set of note indices (0-11), identify the best matching chord name.
+ * useFlat: when true, display root with flat spelling (e.g. Bb instead of A#).
  * Returns { root, typeKey, label } or null.
  */
-export function identifyChord(noteIndices) {
+export function identifyChord(noteIndices, useFlat = false) {
   const notes = [...new Set(noteIndices.map(n => ((n % 12) + 12) % 12))];
   if (notes.length < 2) return null;
 
@@ -144,7 +159,7 @@ export function identifyChord(noteIndices) {
       const expected = def.intervals.map(i => (rootIdx + i) % 12);
       if (expected.length === notes.length && expected.every(e => notes.includes(e))) {
         const rootName = noteName(root);
-        return { root: rootName, typeKey, label: chordLabel(rootName, typeKey) };
+        return { root: rootName, typeKey, label: chordLabelDisplay(rootName, typeKey, useFlat) };
       }
     }
   }
