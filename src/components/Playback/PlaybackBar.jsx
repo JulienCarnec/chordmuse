@@ -5,12 +5,14 @@ import { usePlayback } from './usePlayback';
 import styles from './PlaybackBar.module.css';
 
 const PLAY_STYLES = [
-  { id: 'block',                label: 'Block chord' },
-  { id: 'strum-on',             label: 'On-beat strum' },
-  { id: 'strum-off',            label: 'Off-beat strum' },
-  { id: 'arpeggio-up',          label: 'Arpeggio ↑' },
-  { id: 'arpeggio-down',        label: 'Arpeggio ↓' },
-  { id: 'arpeggio-updown',      label: 'Arpeggio ↑↓' },
+  { id: 'block',                   label: 'Block chord' },
+  { id: 'strum-on',                label: 'On-beat strum' },
+  { id: 'strum-off',               label: 'Off-beat strum' },
+  { id: 'bass-split',              label: 'Bass + split' },
+  { id: 'bach-prelude',            label: 'Bach prelude' },
+  { id: 'arpeggio-up',             label: 'Arpeggio ↑' },
+  { id: 'arpeggio-down',           label: 'Arpeggio ↓' },
+  { id: 'arpeggio-updown',         label: 'Arpeggio ↑↓' },
   { id: 'arpeggio-up-sustain',     label: 'Arpeggio ↑ (sustain)' },
   { id: 'arpeggio-down-sustain',   label: 'Arpeggio ↓ (sustain)' },
   { id: 'arpeggio-updown-sustain', label: 'Arpeggio ↑↓ (sustain)' },

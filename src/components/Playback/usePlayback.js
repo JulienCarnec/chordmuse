@@ -187,11 +187,18 @@ function buildSegments(cells, barDur) {
   return segments;
 }
 
-/** Shift a voiced note string up by one octave, e.g. "C4" → "C5" */
-function shiftOctaveUp(noteStr) {
+/** Shift a voiced note string up by N octaves (default 1) */
+function shiftOctaveUp(noteStr, n = 1) {
   const match = noteStr.match(/^([A-G]#?)(\d+)$/);
   if (!match) return noteStr;
-  return `${match[1]}${Number(match[2]) + 1}`;
+  return `${match[1]}${Number(match[2]) + n}`;
+}
+
+/** Shift a voiced note string down by N octaves (default 1) */
+function shiftOctaveDown(noteStr, n = 1) {
+  const match = noteStr.match(/^([A-G]#?)(\d+)$/);
+  if (!match) return noteStr;
+  return `${match[1]}${Math.max(0, Number(match[2]) - n)}`;
 }
 
 /**
@@ -269,6 +276,63 @@ function buildEvents(notes, playStyle, noteValue, cellDur, arpOctaves = 1, human
         notes: [seq[ni % seq.length]],
         duration,
         velocity: humanVel(0.78, humanize),
+        jitter:   humanJitter(humanize),
+      });
+      t += stepSec;
+      ni++;
+    }
+  } else if (playStyle === 'bass-split') {
+    // Pattern: [bass2+bass1], [root], [upper tones], [root] — all sustained to bar end
+    // bass notes are chord root shifted 2 and 1 octave below the voicing bass
+    const bassNote  = notes[0];                        // e.g. C4
+    const bass1     = shiftOctaveDown(bassNote, 1);    // C3
+    const bass2     = shiftOctaveDown(bassNote, 2);    // C2
+    const upper     = notes.slice(1);                  // [E4, G4]
+    // 4-event sequence, each spaced by stepSec, all holding to bar end
+    const seq4 = [
+      { notes: [bass2, bass1], vel: 0.90 },
+      { notes: [bassNote],     vel: 0.78 },
+      { notes: upper.length ? upper : [bassNote], vel: 0.72 },
+      { notes: [bassNote],     vel: 0.68 },
+    ];
+    seq4.forEach(({ notes: evNotes, vel }, i) => {
+      const t = i * stepSec;
+      if (t >= cellDur - 0.001) return; // guard: cell shorter than 4 steps
+      events.push({
+        time:     t,
+        notes:    evNotes,
+        duration: cellDur - t - RELEASE_GAP,
+        velocity: humanVel(vel, humanize),
+        jitter:   humanJitter(humanize),
+      });
+    });
+
+  } else if (playStyle === 'bach-prelude') {
+    // Bach C-major Prelude pattern: 5-note broken-chord figure repeated to fill bar.
+    // For voiced notes [n0, n1, ..., nN-1]:
+    //   figure = [ n0-1oct, nN-1, n0, n1, nN-1 ]
+    // Generalises to any chord size (triads, 7ths, etc.)
+    const n0   = notes[0];
+    const nTop = notes[notes.length - 1];
+    const nMid = notes.length > 2 ? notes[1] : notes[0];
+    const figure = [
+      shiftOctaveDown(n0),   // low root
+      nTop,                  // top note
+      n0,                    // root
+      nMid,                  // third (or second chord tone)
+      nTop,                  // top note again
+    ];
+    // Velocity accents: beat-1 of figure slightly louder
+    const figVels = [0.88, 0.62, 0.72, 0.62, 0.65];
+    let t = 0;
+    let ni = 0;
+    while (t < cellDur - 0.001) {
+      const figIdx = ni % figure.length;
+      events.push({
+        time:     t,
+        notes:    [figure[figIdx]],
+        duration: stepSec - RELEASE_GAP,
+        velocity: humanVel(figVels[figIdx], humanize),
         jitter:   humanJitter(humanize),
       });
       t += stepSec;
