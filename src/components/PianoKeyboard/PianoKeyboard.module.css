@@ -161,6 +161,7 @@
   flex-shrink: 0;
   margin-bottom: 2px;
   line-height: 1;
+  transition: background 0.08s ease;
 }
 
 /* Black keys: same but slightly smaller, sits inside the dark key */
@@ -176,6 +177,13 @@
   flex-shrink: 0;
   margin-bottom: 2px;
   line-height: 1;
+  transition: background 0.08s ease;
+}
+
+/* Playing state — light green pulse when the scale note is sounding */
+.scaleLabelPlaying {
+  background: #86efac;
+  color: #14532d;
 }
 
 /* ─── Dim — cross-hatch pattern for notes outside the scale ─

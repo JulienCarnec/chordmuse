@@ -120,10 +120,12 @@ export function getChordRole(chordRoot, chordType, scaleRoot, scaleKey) {
   const scaleSet = new Set(scaleNotes.map(n => noteIndex(n)));
   const allInScale = chordNotes.every(n => scaleSet.has(noteIndex(n)));
 
-  if (isDominantI)    return 'dominant-I';
-  if (isDominantII)   return 'dominant-II';
-  if (isSubdominantI) return 'subdominant-I';
-  if (isSubdominantII) return 'subdominant-II';
+  // Dominant / subdominant roles are reserved for dom7 chords only (e.g. G7, A7).
+  // Other chord types on those roots fall through to in-scale / out.
+  if (isDominantI    && chordType === 'dom7') return 'dominant-I';
+  if (isDominantII   && chordType === 'dom7') return 'dominant-II';
+  if (isSubdominantI && chordType === 'dom7') return 'subdominant-I';
+  if (isSubdominantII && chordType === 'dom7') return 'subdominant-II';
   if (allInScale)     return 'in-scale';
   return 'out';
 }

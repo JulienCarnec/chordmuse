@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import * as Tone from 'tone';
 import { CHROMATIC, ENHARMONIC, noteIndex, noteName } from '../../theory/notes';
 import { getScaleNoteSet, getScaleNotes } from '../../theory/scales';
 import { getChordNotes, getChordNotesVoiced, identifyChord } from '../../theory/chords';
@@ -81,6 +82,9 @@ export function PianoKeyboard({
   // manualHighlight: Set of "note+octave" strings (per-key, not pitch-class)
   const [manualHighlight, setManualHighlight] = useState(new Set());
   const [pickingInversion, setPickingInversion] = useState(false);
+  // Set of pitch-class note names currently sounding during scale playback
+  const [playingScaleNotes, setPlayingScaleNotes] = useState(new Set());
+  const scaleTimersRef = useRef([]);
   const wrapperRef = useRef(null);
   const [whiteW, setWhiteW] = useState(36);
   // attackedAt: Map<keyId, timestamp> — when the note last attacked
@@ -210,6 +214,25 @@ export function PianoKeyboard({
     if (!indices.length) return;
     const notes = indices.sort((a, b) => a - b).map(i => `${CHROMATIC[i]}${START_OCTAVE + 1}`);
     playArpeggio(notes, 'up', '8n', instrument);
+
+    // Cancel any previous scale timers
+    scaleTimersRef.current.forEach(t => clearTimeout(t));
+    scaleTimersRef.current = [];
+    setPlayingScaleNotes(new Set());
+
+    // Schedule light-green highlight for each note in the arpeggio
+    const stepMs = Tone.Time('8n').toSeconds() * 1000;
+    const holdMs = stepMs * 0.85; // slightly shorter than step so overlap is clean
+    notes.forEach((noteWithOct, i) => {
+      const pitchClass = noteWithOct.replace(/\d+$/, '');
+      const onTimer = setTimeout(() => {
+        setPlayingScaleNotes(prev => { const n = new Set(prev); n.add(pitchClass); return n; });
+      }, i * stepMs);
+      const offTimer = setTimeout(() => {
+        setPlayingScaleNotes(prev => { const n = new Set(prev); n.delete(pitchClass); return n; });
+      }, i * stepMs + holdMs);
+      scaleTimersRef.current.push(onTimer, offTimer);
+    });
   }
 
   // Detect chord from manual highlights (pitch-class level, strip octave)
@@ -291,7 +314,7 @@ export function PianoKeyboard({
             >
               {layers.scale ? (
                 <span
-                  className={styles.scaleLabel}
+                  className={`${styles.scaleLabel} ${playingScaleNotes.has(note) ? styles.scaleLabelPlaying : ''}`}
                   style={{ width: circleSize, height: circleSize, fontSize: circleFontSize }}
                 >{note}</span>
               ) : (
@@ -329,7 +352,7 @@ export function PianoKeyboard({
             >
               {layers.scale ? (
                 <span
-                  className={styles.scaleLabelBlack}
+                  className={`${styles.scaleLabelBlack} ${playingScaleNotes.has(sharp) ? styles.scaleLabelPlaying : ''}`}
                   style={{ width: circleSize, height: circleSize, fontSize: circleFontSize }}
                 >{displayName}</span>
               ) : (
