@@ -26,14 +26,20 @@
   margin-right: 4px;
 }
 
-/* The scale entry uses a dot shape in the legend */
+/* The scale entry uses a mini green circle (matching key label style) */
 .legendDot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: #16a34a;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
   flex-shrink: 0;
+  line-height: 1;
 }
 
 /* Chord / manual / playing entries use a small coloured square */
@@ -171,6 +177,10 @@
   margin-bottom: 2px;
   line-height: 1;
 }
+
+/* ─── Dim — notes outside the scale (when scale is active) ── */
+.dimWhite { background: #e5e7eb !important; }
+.dimBlack { background: #374151 !important; }
 
 /* ─── Background highlight layers ───────────────────────────
    Priority: playing > manual > chord

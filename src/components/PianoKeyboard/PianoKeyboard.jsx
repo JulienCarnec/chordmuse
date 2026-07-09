@@ -78,7 +78,9 @@ export function PianoKeyboard({ scaleRoot, scaleKey, selectedChord, instrument =
   const blackW = Math.round(whiteW * BLACK_W_RATIO);
   const blackH = Math.round(whiteW * 2.2);
   const whiteH = Math.round(whiteW * 3.6);
-  const dotSize = Math.max(4, Math.round(whiteW * 0.18));
+  // Uniform circle/font size — same for white and black keys
+  const circleSize = Math.max(14, Math.round(whiteW * 0.55));
+  const circleFontSize = Math.max(7, Math.round(circleSize * 0.55));
 
   const scaleNoteSet  = scaleRoot && scaleKey ? getScaleNoteSet(scaleRoot, scaleKey) : new Set();
   const scaleNotes    = scaleRoot && scaleKey ? getScaleNotes(scaleRoot, scaleKey) : [];
@@ -122,15 +124,14 @@ export function PianoKeyboard({ scaleRoot, scaleKey, selectedChord, instrument =
   }
 
   const detectedChord = manualHighlight.size >= 2 ? identifyChord([...manualHighlight]) : null;
-  const labelSize = Math.max(8, Math.round(whiteW * 0.35));
-  const blackLabelSize = Math.max(6, Math.round(blackW * 0.32));
+  const hasScale = scaleNoteSet.size > 0;
 
   return (
     <div className={styles.wrapper} ref={wrapperRef}>
       {/* Controls — no mode toggle, always multi-layer */}
       <div className={styles.controls}>
         <div className={styles.legend}>
-          <span className={styles.legendDot} />
+          <span className={styles.legendDot}>A</span>
           <span className={styles.legendLabel}>Scale</span>
           <span className={`${styles.legendSwatch} ${styles.swatchChord}`} />
           <span className={styles.legendLabel}>Chord</span>
@@ -168,20 +169,21 @@ export function PianoKeyboard({ scaleRoot, scaleKey, selectedChord, instrument =
             chord:   chordNoteSet.has(nIdx),
             scale:   scaleNoteSet.has(nIdx),
           };
+          const dimmed = hasScale && !layers.scale && !layers.playing && !layers.manual && !layers.chord;
           return (
             <div
               key={`w-${note}${octave}`}
-              className={`${styles.white} ${bgClass(false, layers)}`}
+              className={`${styles.white} ${bgClass(false, layers)} ${dimmed ? styles.dimWhite : ''}`}
               style={{ left: wIdx * whiteW, width: whiteW, height: whiteH }}
               onClick={e => handleKeyClick(e, note, octave)}
             >
               {layers.scale ? (
                 <span
                   className={styles.scaleLabel}
-                  style={{ width: dotSize * 1.8, height: dotSize * 1.8, fontSize: Math.max(7, Math.round(dotSize * 0.9)) }}
+                  style={{ width: circleSize, height: circleSize, fontSize: circleFontSize }}
                 >{note}</span>
               ) : (
-                <span className={styles.noteName} style={{ fontSize: labelSize }}>{note}</span>
+                <span className={styles.noteName} style={{ fontSize: circleFontSize }}>{note}</span>
               )}
             </div>
           );
@@ -196,22 +198,23 @@ export function PianoKeyboard({ scaleRoot, scaleKey, selectedChord, instrument =
             chord:   chordNoteSet.has(nIdx),
             scale:   scaleNoteSet.has(nIdx),
           };
+          const dimmed = hasScale && !layers.scale && !layers.playing && !layers.manual && !layers.chord;
           const displayName = blackKeyDisplayName(sharp, scaleRoot, scaleKey, scaleNotes);
           const left = (afterWIdx + 1) * whiteW - blackW / 2;
           return (
             <div
               key={`b-${sharp}${octave}`}
-              className={`${styles.black} ${bgClass(true, layers)}`}
+              className={`${styles.black} ${bgClass(true, layers)} ${dimmed ? styles.dimBlack : ''}`}
               style={{ left, width: blackW, height: blackH }}
               onClick={e => handleKeyClick(e, sharp, octave)}
             >
               {layers.scale ? (
                 <span
                   className={styles.scaleLabelBlack}
-                  style={{ width: dotSize * 1.5, height: dotSize * 1.5, fontSize: Math.max(6, Math.round(dotSize * 0.75)) }}
+                  style={{ width: circleSize, height: circleSize, fontSize: circleFontSize }}
                 >{displayName}</span>
               ) : (
-                <span className={styles.blackNoteName} style={{ fontSize: blackLabelSize }}>{displayName}</span>
+                <span className={styles.blackNoteName} style={{ fontSize: circleFontSize }}>{displayName}</span>
               )}
             </div>
           );
