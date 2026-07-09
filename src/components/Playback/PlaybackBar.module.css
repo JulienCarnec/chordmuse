@@ -74,3 +74,28 @@
   color: #d1d5db;
   cursor: pointer;
 }
+
+.arpOctGroup {
+  display: flex;
+  border: 1px solid #4b5563;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.arpOctBtn {
+  padding: 3px 10px;
+  border: none;
+  background: #374151;
+  color: #9ca3af;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.arpOctBtn:hover { background: #4b5563; }
+
+.arpOctActive {
+  background: #3b82f6;
+  color: #fff;
+  font-weight: 600;
+}
+.arpOctActive:hover { background: #2563eb; }

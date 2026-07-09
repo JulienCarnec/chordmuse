@@ -23,13 +23,14 @@ export function PlaybackBar() {
   const { play, stop, pause, resume } = usePlayback();
   const [playStyle, setPlayStyle] = useState('block');
   const [noteValue, setNoteValue] = useState('4n');
+  const [arpOctaves, setArpOctaves] = useState(1);
 
   const { isPlaying, isPaused, bpm, timeSig, instrument, metronome, progressions, activeProgressionId } = state;
 
   function handlePlay() {
     const prog = progressions[activeProgressionId];
     if (!prog) return;
-    play({ cells: prog.cells, progressionId: prog.id, bpm, timeSig, instrument, playStyle, noteValue, metronome });
+    play({ cells: prog.cells, progressionId: prog.id, bpm, timeSig, instrument, playStyle, noteValue, arpOctaves, metronome });
   }
 
   function adjustBpm(delta) {
@@ -76,6 +77,20 @@ export function PlaybackBar() {
       <select className={styles.select} value={playStyle} onChange={e => setPlayStyle(e.target.value)}>
         {PLAY_STYLES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
       </select>
+
+      {/* Arpeggio octave span — only shown for arpeggio styles */}
+      {playStyle.startsWith('arpeggio') && (
+        <div className={styles.arpOctGroup}>
+          <button
+            className={`${styles.arpOctBtn} ${arpOctaves === 1 ? styles.arpOctActive : ''}`}
+            onClick={() => setArpOctaves(1)}
+          >1 oct</button>
+          <button
+            className={`${styles.arpOctBtn} ${arpOctaves === 2 ? styles.arpOctActive : ''}`}
+            onClick={() => setArpOctaves(2)}
+          >2 oct</button>
+        </div>
+      )}
 
       {/* Note value (subdivision) */}
       <select className={styles.select} value={noteValue} onChange={e => setNoteValue(e.target.value)}>

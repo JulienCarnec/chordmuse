@@ -51,6 +51,7 @@ export function usePlayback() {
     instrument,
     playStyle = 'block',
     noteValue = '4n',
+    arpOctaves = 1,
     metronome,
   }) => {
     await Tone.start();
@@ -72,7 +73,7 @@ export function usePlayback() {
       let cursor = timeOffset;
       for (const seg of segments) {
         const { notes, dur, cellIndex } = seg;
-        const events = buildEvents(notes, playStyle, noteValue, dur);
+        const events = buildEvents(notes, playStyle, noteValue, dur, arpOctaves);
 
         for (const ev of events) {
           const t = cursor + ev.time;
@@ -148,7 +149,15 @@ function buildSegments(cells, barDur) {
   return segments;
 }
 
-function buildEvents(notes, playStyle, noteValue, cellDur) {
+/** Shift a voiced note string up by one octave, e.g. "C4" → "C5", "A#3" → "A#4" */
+function shiftOctaveUp(noteStr) {
+  // note name is everything before the last digit(s)
+  const match = noteStr.match(/^([A-G]#?)(\d+)$/);
+  if (!match) return noteStr;
+  return `${match[1]}${Number(match[2]) + 1}`;
+}
+
+function buildEvents(notes, playStyle, noteValue, cellDur, arpOctaves = 1) {
   const stepSec = Tone.Time(noteValue).toSeconds();
   const events = [];
 
@@ -172,7 +181,9 @@ function buildEvents(notes, playStyle, noteValue, cellDur) {
   } else if (playStyle.startsWith('arpeggio')) {
     const sustain = playStyle.endsWith('-sustain');
     const baseStyle = playStyle.replace('-sustain', '');
+    // Build one-octave sequence, then optionally append notes shifted up an octave
     let seq = [...notes];
+    if (arpOctaves === 2) seq = [...seq, ...notes.map(shiftOctaveUp)];
     if (baseStyle === 'arpeggio-down') seq = seq.reverse();
     if (baseStyle === 'arpeggio-updown') seq = [...seq, ...[...seq].reverse().slice(1)];
     let t = 0;
