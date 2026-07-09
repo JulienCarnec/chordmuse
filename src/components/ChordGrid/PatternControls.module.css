@@ -1,0 +1,67 @@
+.compact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.miniSelect {
+  font-size: 10px;
+  padding: 1px 3px;
+  border: 1px solid #e5e7eb;
+  border-radius: 3px;
+  background: #f9fafb;
+  cursor: pointer;
+  width: 100%;
+  color: #6b7280;
+}
+
+.full {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.select {
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.arpOctGroup {
+  display: flex;
+  border: 1px solid #4b5563;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.arpOctBtn {
+  padding: 3px 10px;
+  border: none;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.arpOctBtn:hover { background: #e5e7eb; }
+
+.arpOctActive {
+  background: #3b82f6;
+  color: #fff;
+  font-weight: 600;
+}
+.arpOctActive:hover { background: #2563eb; }
+
+.metLabel {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #6b7280;
+  cursor: pointer;
+}

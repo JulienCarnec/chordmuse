@@ -6,45 +6,33 @@ import { useSampler } from '../../audio/useSampler';
 import { ReverbKnob } from './ReverbKnob';
 import styles from './PlaybackBar.module.css';
 
-const PLAY_STYLES = [
-  { id: 'block',                   label: 'Block chord' },
-  { id: 'strum-on',                label: 'On-beat strum' },
-  { id: 'strum-off',               label: 'Off-beat strum' },
-  { id: 'bass-split',              label: 'Bass + split' },
-  { id: 'bach-prelude',            label: 'Bach prelude' },
-  { id: 'arpeggio-up',             label: 'Arpeggio ↑' },
-  { id: 'arpeggio-down',           label: 'Arpeggio ↓' },
-  { id: 'arpeggio-updown',         label: 'Arpeggio ↑↓' },
-  { id: 'arpeggio-up-sustain',     label: 'Arpeggio ↑ (sustain)' },
-  { id: 'arpeggio-down-sustain',   label: 'Arpeggio ↓ (sustain)' },
-  { id: 'arpeggio-updown-sustain', label: 'Arpeggio ↑↓ (sustain)' },
-];
-
-const NOTE_VALUES = ['1n', '2n', '4n', '8n', '16n'];
-
 export function PlaybackBar() {
   const { state, dispatch } = useAppState();
   const { play, stop, pause, resume } = usePlayback();
   const { setReverbWet } = useSampler();
-  const [playStyle, setPlayStyle] = useState('block');
-  const [noteValue, setNoteValue] = useState('4n');
-  const [arpOctaves, setArpOctaves] = useState(1);
-  const [arpRepeat, setArpRepeat] = useState(true);
   const [humanize, setHumanize] = useState(0);
-  const [reverbPct, setReverbPct] = useState(50); // matches default wet: 0.50
+  const [reverbPct, setReverbPct] = useState(50);
 
   const { isPlaying, isPaused, bpm, timeSig, instrument, metronome, progressions, activeProgressionId } = state;
-
+  // Pattern controls live on ChordGrid; read them from a shared ref exported by ChordGrid context
+  // PlaybackBar only needs to trigger play with the values already seeded in liveParams.
   function handlePlay() {
     const prog = progressions[activeProgressionId];
     if (!prog) return;
-    play({ cells: prog.cells, progressionId: prog.id, bpm, timeSig, instrument, playStyle, noteValue, arpOctaves, arpRepeat, humanize: humanize / 100, metronome });
+    // playStyle/noteValue/arpOctaves/arpRepeat are managed by ChordGrid via liveParams;
+    // passing defaults here — ChordGrid will have already seeded liveParams.
+    play({
+      cells: prog.cells,
+      progressionId: prog.id,
+      bpm, timeSig, instrument,
+      humanize: humanize / 100,
+      metronome,
+    });
   }
 
   function adjustBpm(delta) {
     const next = Math.min(300, Math.max(20, bpm + delta));
     dispatch({ type: 'SET_BPM', bpm: next });
-    // Update transport immediately if playing
     if (isPlaying) Tone.getTransport().bpm.value = next;
   }
 
@@ -67,7 +55,7 @@ export function PlaybackBar() {
         </>
       )}
 
-      {/* BPM with ± buttons */}
+      {/* BPM */}
       <div className={styles.bpmGroup}>
         <button className={styles.bpmBtn} onClick={() => adjustBpm(-1)}>−</button>
         <input
@@ -81,41 +69,7 @@ export function PlaybackBar() {
         <button className={styles.bpmBtn} onClick={() => adjustBpm(1)}>+</button>
       </div>
 
-      {/* Play style */}
-      <select className={styles.select} value={playStyle} onChange={e => setPlayStyle(e.target.value)}>
-        {PLAY_STYLES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-      </select>
-
-      {/* Arpeggio controls — only shown for arpeggio styles */}
-      {playStyle.startsWith('arpeggio') && (
-        <>
-          <div className={styles.arpOctGroup}>
-            <button
-              className={`${styles.arpOctBtn} ${arpOctaves === 1 ? styles.arpOctActive : ''}`}
-              onClick={() => setArpOctaves(1)}
-            >1 oct</button>
-            <button
-              className={`${styles.arpOctBtn} ${arpOctaves === 2 ? styles.arpOctActive : ''}`}
-              onClick={() => setArpOctaves(2)}
-            >2 oct</button>
-          </div>
-          <label className={styles.metLabel}>
-            <input
-              type="checkbox"
-              checked={arpRepeat}
-              onChange={e => setArpRepeat(e.target.checked)}
-            />
-            Repeat
-          </label>
-        </>
-      )}
-
-      {/* Note value (subdivision) */}
-      <select className={styles.select} value={noteValue} onChange={e => setNoteValue(e.target.value)}>
-        {NOTE_VALUES.map(v => <option key={v} value={v}>{v}</option>)}
-      </select>
-
-      {/* Humanize slider */}
+      {/* Humanize */}
       <div className={styles.humanizeGroup}>
         <span className={styles.humanizeLabel}>Humanize</span>
         <input
@@ -123,7 +77,7 @@ export function PlaybackBar() {
           className={styles.humanizeSlider}
           min={0} max={100} step={1}
           value={humanize}
-          onChange={e => setHumanize(Number(e.target.value))}
+          onChange={e => { setHumanize(Number(e.target.value)); }}
         />
         <span className={styles.humanizeVal}>{humanize}</span>
       </div>

@@ -110,7 +110,7 @@
   padding-bottom: 5px;
   box-sizing: border-box;
   z-index: 1;
-  transition: background 0.05s;
+  transition: background 0.28s ease, filter 0.05s;
 }
 .white:hover { filter: brightness(0.94); }
 
@@ -135,7 +135,7 @@
   align-items: center;
   justify-content: flex-end;
   padding-bottom: 4px;
-  transition: background 0.05s;
+  transition: background 0.28s ease, filter 0.05s;
 }
 .black:hover { filter: brightness(1.3); }
 
@@ -217,19 +217,19 @@
    Priority: playing > invFirst > invCandidate > highlight
    Applied as a class; scale never sets background.        */
 
-/* White keys */
-.bg_highlight  { background: #bfdbfe !important; }
-.bg_attack     { background: #f59e0b !important; }   /* bright amber — note onset */
-.bg_sustain    { background: #fde68a !important; }   /* soft amber  — note held */
-.bg_invCand    { background: #bbf7d0 !important; }
-.bg_invFirst   { background: #4ade80 !important; }
+/* White keys — no !important so CSS transitions work */
+.bg_highlight  { background: #bfdbfe; }
+.bg_attack     { background: #f59e0b; }   /* bright amber — note onset */
+.bg_sustain    { background: #fde68a; }   /* soft amber  — note held */
+.bg_invCand    { background: #bbf7d0; }
+.bg_invFirst   { background: #4ade80; }
 
 /* Black keys */
-.bg_highlight_b  { background: #1d4ed8 !important; }
-.bg_attack_b     { background: #b45309 !important; }  /* bright dark-amber */
-.bg_sustain_b    { background: #d97706 !important; }  /* softer amber */
-.bg_invCand_b    { background: #16a34a !important; }
-.bg_invFirst_b   { background: #15803d !important; }
+.bg_highlight_b  { background: #1d4ed8; }
+.bg_attack_b     { background: #b45309; }  /* bright dark-amber */
+.bg_sustain_b    { background: #d97706; }  /* softer amber */
+.bg_invCand_b    { background: #16a34a; }
+.bg_invFirst_b   { background: #15803d; }
 
 /* ─── Inversion picker button ─────────────────────────────── */
 .invBtn {

@@ -47,6 +47,15 @@ function humanJitter(humanize) {
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
+// Mutable refs for live-adjustable playback params
+const liveParams = {
+  playStyle:  { current: 'block' },
+  noteValue:  { current: '4n' },
+  arpOctaves: { current: 1 },
+  arpRepeat:  { current: true },
+  humanize:   { current: 0 },
+};
+
 export function usePlayback() {
   const { state, dispatch } = useAppState();
   const { getSynth } = useSampler();
@@ -90,12 +99,19 @@ export function usePlayback() {
     playStyle = 'block',
     noteValue = '4n',
     arpOctaves = 1,
-    arpRepeat = true,   // true = fill bar, false = one pass only
-    humanize = 0,       // 0–1
+    arpRepeat = true,
+    humanize = 0,
     metronome,
   }) => {
     await Tone.start();
     stop();
+
+    // Seed live params so the loop always reads the latest values
+    liveParams.playStyle.current  = playStyle;
+    liveParams.noteValue.current  = noteValue;
+    liveParams.arpOctaves.current = arpOctaves;
+    liveParams.arpRepeat.current  = arpRepeat;
+    liveParams.humanize.current   = humanize;
 
     const synth = await getSynth(instrument);
     const transport = Tone.getTransport();
@@ -112,7 +128,13 @@ export function usePlayback() {
       let cursor = timeOffset;
       for (const seg of segments) {
         const { notes, dur, cellIndex } = seg;
-        const events = buildEvents(notes, playStyle, noteValue, dur, arpOctaves, arpRepeat, humanize);
+        // Read live params at schedule time so mid-play changes take effect
+        const ps  = seg.playStyle ?? liveParams.playStyle.current;
+        const nv  = seg.noteValue  ?? liveParams.noteValue.current;
+        const ao  = liveParams.arpOctaves.current;
+        const ar  = liveParams.arpRepeat.current;
+        const hum = liveParams.humanize.current;
+        const events = buildEvents(notes, ps, nv, dur, ao, ar, hum);
 
         for (const ev of events) {
           // Apply timing jitter — keep within cell bounds
@@ -162,7 +184,16 @@ export function usePlayback() {
     transport.start();
   }, [stop, getSynth, dispatch]);
 
-  return { play, stop, pause, resume };
+  // Update live params without restarting playback
+  const updateLiveParams = useCallback((params) => {
+    if (params.playStyle  !== undefined) liveParams.playStyle.current  = params.playStyle;
+    if (params.noteValue  !== undefined) liveParams.noteValue.current  = params.noteValue;
+    if (params.arpOctaves !== undefined) liveParams.arpOctaves.current = params.arpOctaves;
+    if (params.arpRepeat  !== undefined) liveParams.arpRepeat.current  = params.arpRepeat;
+    if (params.humanize   !== undefined) liveParams.humanize.current   = params.humanize;
+  }, []);
+
+  return { play, stop, pause, resume, updateLiveParams };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -171,12 +202,17 @@ function buildSegments(cells, barDur) {
   const segments = [];
   for (let i = 0; i < cells.length; i++) {
     const cell = cells[i];
+    // Per-cell overrides (null = use global)
+    const cellPlayStyle = cell.playStyle ?? null;
+    const cellNoteValue = cell.noteValue ?? null;
     if (cell.split) {
       for (const sc of cell.subCells.filter(Boolean)) {
         segments.push({
           notes: getChordNotesVoiced(sc.root, sc.typeKey, sc.octave ?? BASE_OCTAVE, sc.inversion ?? 0),
           dur: barDur / 2,
           cellIndex: i,
+          playStyle: cellPlayStyle,
+          noteValue: cellNoteValue,
         });
       }
     } else if (cell.chord) {
@@ -184,6 +220,8 @@ function buildSegments(cells, barDur) {
         notes: getChordNotesVoiced(cell.chord.root, cell.chord.typeKey, cell.chord.octave ?? BASE_OCTAVE, cell.chord.inversion ?? 0),
         dur: barDur,
         cellIndex: i,
+        playStyle: cellPlayStyle,
+        noteValue: cellNoteValue,
       });
     }
   }

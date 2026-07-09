@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppState } from '../../state/AppContext';
 import { ChordCell } from './ChordCell';
+import { PatternControls } from './PatternControls';
 import { ScaleSelector } from '../ScaleSelector/ScaleSelector';
 import { PianoKeyboard } from '../PianoKeyboard/PianoKeyboard';
 import { useSampler } from '../../audio/useSampler';
+import { usePlayback } from '../Playback/usePlayback';
 import { getChordNotesVoiced, CHORD_TYPES } from '../../theory/chords';
 import { noteIndex } from '../../theory/notes';
 import styles from './ChordGrid.module.css';
@@ -25,7 +27,15 @@ export function ChordGrid() {
   const [transposeAmt, setTransposeAmt] = useState(0);
   const [selectedCellIndex, setSelectedCellIndex] = useState(null);
   const [autoPlay, setAutoPlay] = useState(true);
+  const [globalPlayStyle, setGlobalPlayStyle] = useState('block');
+  const [globalNoteValue, setGlobalNoteValue] = useState('4n');
   const { playNotes } = useSampler();
+  const { updateLiveParams } = usePlayback();
+
+  // Keep liveParams in sync with global toolbar settings
+  useEffect(() => {
+    updateLiveParams({ playStyle: globalPlayStyle, noteValue: globalNoteValue });
+  }, [globalPlayStyle, globalNoteValue, updateLiveParams]);
 
   if (!prog) {
     return (
@@ -86,6 +96,14 @@ export function ChordGrid() {
           scaleKey={scaleKey}
           firstChord={firstChord}
           onChange={handleScaleChange}
+        />
+        <PatternControls
+          playStyle={globalPlayStyle}
+          noteValue={globalNoteValue}
+          onChange={({ playStyle, noteValue }) => {
+            if (playStyle !== null) setGlobalPlayStyle(playStyle);
+            setGlobalNoteValue(noteValue ?? globalNoteValue);
+          }}
         />
         <div className={styles.transpose}>
           <label className={styles.smallLabel}>Transpose</label>
@@ -151,6 +169,9 @@ export function ChordGrid() {
                       }
                       onSetSubChord={(pid, ci, si, chord) =>
                         dispatch({ type: 'SET_SUB_CELL_CHORD', progressionId: pid, cellIndex: ci, subIndex: si, chord })
+                      }
+                      onSetPlayStyle={(pid, ci, ps, nv) =>
+                        dispatch({ type: 'SET_CELL_PLAY_STYLE', progressionId: pid, cellIndex: ci, playStyle: ps, noteValue: nv })
                       }
                     />
                     {/* Remove button */}

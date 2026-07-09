@@ -21,7 +21,7 @@
 .split {
   display: flex;
   flex-direction: row;
-  min-width: 180px;
+  min-width: 90px;
   padding: 0;
   overflow: hidden;
   gap: 0;

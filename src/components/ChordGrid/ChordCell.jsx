@@ -1,6 +1,6 @@
-import { CHROMATIC } from '../../theory/notes';
+import { CHROMATIC, noteIndex, noteName } from '../../theory/notes';
 import { CHORD_TYPES, chordLabel, getChordRole } from '../../theory/chords';
-import { noteIndex } from '../../theory/notes';
+import { PatternControls } from './PatternControls';
 import styles from './ChordCell.module.css';
 
 const ROLE_STYLES = {
@@ -41,6 +41,25 @@ function buildOptions(scaleRoot, scaleKey) {
   return combos;
 }
 
+/** Derive the bass note name for a chord at a given inversion. */
+function bassNoteName(chord) {
+  if (!chord || !chord.inversion) return null;
+  const def = CHORD_TYPES[chord.typeKey];
+  if (!def) return null;
+  const inv = chord.inversion % def.intervals.length;
+  const bassInterval = def.intervals[inv];
+  const rootIdx = noteIndex(chord.root);
+  return noteName(((rootIdx + bassInterval) % 12 + 12) % 12);
+}
+
+/** Label with optional slash notation for inversions: e.g. "C/E" */
+function cellLabel(chord) {
+  const base = chordLabel(chord.root, chord.typeKey);
+  const bass = bassNoteName(chord);
+  if (bass && bass !== chord.root) return `${base}/${bass}`;
+  return base;
+}
+
 function ChordPicker({ value, scaleRoot, scaleKey, onChange }) {
   const options = buildOptions(scaleRoot, scaleKey);
   const currentVal = value ? `${value.root}|${value.typeKey}` : '';
@@ -79,6 +98,7 @@ export function ChordCell({
   onSplit,
   onUnsplit,
   onSetSubChord,
+  onSetPlayStyle,
 }) {
   function role(chord) {
     if (!chord) return 'out';
@@ -91,7 +111,7 @@ export function ChordCell({
         {cell.subCells.map((sc, si) => (
           <div key={si} className={`${styles.subCell} ${ROLE_STYLES[role(sc)] ?? ''}`}>
             {sc
-              ? <span className={styles.label}>{chordLabel(sc.root, sc.typeKey)}</span>
+              ? <span className={styles.label}>{cellLabel(sc)}</span>
               : <span className={styles.empty}>+</span>
             }
             <ChordPicker
@@ -105,6 +125,17 @@ export function ChordCell({
             )}
           </div>
         ))}
+        {onSetPlayStyle && (
+          <PatternControls
+            compact
+            allowNull
+            playStyle={cell.playStyle ?? null}
+            noteValue={cell.noteValue ?? null}
+            onChange={({ playStyle, noteValue }) =>
+              onSetPlayStyle(progressionId, cellIndex, playStyle, noteValue)
+            }
+          />
+        )}
       </div>
     );
   }
@@ -113,7 +144,7 @@ export function ChordCell({
   return (
     <div className={`${styles.cell} ${ROLE_STYLES[r] ?? ''} ${isCurrent ? styles.current : ''}`}>
       {cell.chord
-        ? <span className={styles.label}>{chordLabel(cell.chord.root, cell.chord.typeKey)}</span>
+        ? <span className={styles.label}>{cellLabel(cell.chord)}</span>
         : <span className={styles.empty}>+</span>
       }
       <ChordPicker
@@ -123,6 +154,17 @@ export function ChordCell({
         onChange={chord => onSetChord(progressionId, cellIndex, chord)}
       />
       <button className={styles.splitBtn} title="Split cell" onClick={() => onSplit(progressionId, cellIndex)}>⊢</button>
+      {onSetPlayStyle && (
+        <PatternControls
+          compact
+          allowNull
+          playStyle={cell.playStyle ?? null}
+          noteValue={cell.noteValue ?? null}
+          onChange={({ playStyle, noteValue }) =>
+            onSetPlayStyle(progressionId, cellIndex, playStyle, noteValue)
+          }
+        />
+      )}
     </div>
   );
 }
