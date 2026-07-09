@@ -115,6 +115,24 @@ function reducer(state, action) {
       };
     }
 
+    case 'SET_SUB_CELL_PLAY_STYLE': {
+      const prog = state.progressions[action.progressionId];
+      if (!prog) return state;
+      const cells = prog.cells.map((cell, i) => {
+        if (i !== action.cellIndex || !cell.split) return cell;
+        const subCells = cell.subCells.map((sc, si) =>
+          si === action.subIndex && sc
+            ? { ...sc, playStyle: action.playStyle, noteValue: action.noteValue }
+            : sc
+        );
+        return { ...cell, subCells };
+      });
+      return {
+        ...state,
+        progressions: { ...state.progressions, [action.progressionId]: { ...prog, cells } },
+      };
+    }
+
     case 'ADD_CELL': {
       const prog = state.progressions[action.progressionId];
       if (!prog) return state;

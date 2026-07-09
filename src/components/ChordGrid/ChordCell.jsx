@@ -126,10 +126,21 @@ export function ChordCell({
   onUnsplit,
   onSetSubChord,
   onSetPlayStyle,
+  onSetSubPlayStyle,
 }) {
   const [showPattern, setShowPattern] = useState(false);
+  // Track which sub-cell pattern panels are open (Set of sub-cell indices)
+  const [openSubPatterns, setOpenSubPatterns] = useState(new Set());
 
   const hasCustom = cell.playStyle != null;
+
+  function toggleSubPattern(si) {
+    setOpenSubPatterns(prev => {
+      const next = new Set(prev);
+      next.has(si) ? next.delete(si) : next.add(si);
+      return next;
+    });
+  }
 
   function role(chord) {
     if (!chord) return 'out';
@@ -140,49 +151,52 @@ export function ChordCell({
     return (
       <div className={`${styles.cell} ${styles.split} ${isCurrent ? styles.current : ''}`}>
         <div className={styles.splitInner}>
-        {cell.subCells.map((sc, si) => (
-          <div key={si} className={`${styles.subCell} ${ROLE_STYLES[role(sc)] ?? ''}`}>
-            {sc
-              ? <span className={styles.label}>{cellLabel(sc)}</span>
-              : <span className={styles.empty}>+</span>
-            }
-            <ChordPicker
-              value={sc}
-              scaleRoot={scaleRoot}
-              scaleKey={scaleKey}
-              onChange={chord => onSetSubChord(progressionId, cellIndex, si, chord)}
-            />
-            {si === 0 && (
-              <button
-                className={styles.unsplitBtn}
-                title="Merge cells"
-                onClick={e => { e.stopPropagation(); onUnsplit(progressionId, cellIndex); }}
-              >⊞</button>
-            )}
-          </div>
-        ))}
-        </div>
-        {/* Pattern override toggle at bottom-right of split cell */}
-        {onSetPlayStyle && (
-          <div className={styles.splitFooter}>
-            <PatternToggle
-              hasCustom={hasCustom}
-              open={showPattern}
-              onToggle={() => setShowPattern(p => !p)}
-            />
-            {showPattern && (
-              <PatternControls
-                compact
-                allowNull
-                playStyle={cell.playStyle ?? null}
-                noteValue={cell.noteValue ?? null}
-                onChange={({ playStyle, noteValue }) => {
-                  onSetPlayStyle(progressionId, cellIndex, playStyle, noteValue);
-                }}
+        {cell.subCells.map((sc, si) => {
+          const subHasCustom = sc?.playStyle != null;
+          const subPatternOpen = openSubPatterns.has(si);
+          return (
+            <div key={si} className={`${styles.subCell} ${ROLE_STYLES[role(sc)] ?? ''}`}>
+              {sc
+                ? <span className={styles.label}>{cellLabel(sc)}</span>
+                : <span className={styles.empty}>+</span>
+              }
+              <ChordPicker
+                value={sc}
+                scaleRoot={scaleRoot}
+                scaleKey={scaleKey}
+                onChange={chord => onSetSubChord(progressionId, cellIndex, si, chord)}
               />
-            )}
-          </div>
-        )}
+              <div className={styles.cellFooter}>
+                {si === 0 && (
+                  <button
+                    className={styles.unsplitBtn}
+                    title="Merge cells"
+                    onClick={e => { e.stopPropagation(); onUnsplit(progressionId, cellIndex); }}
+                  >⊞</button>
+                )}
+                {onSetSubPlayStyle && (
+                  <PatternToggle
+                    hasCustom={subHasCustom}
+                    open={subPatternOpen}
+                    onToggle={() => toggleSubPattern(si)}
+                  />
+                )}
+              </div>
+              {subPatternOpen && onSetSubPlayStyle && (
+                <PatternControls
+                  compact
+                  allowNull
+                  playStyle={sc?.playStyle ?? null}
+                  noteValue={sc?.noteValue ?? null}
+                  onChange={({ playStyle, noteValue }) =>
+                    onSetSubPlayStyle(progressionId, cellIndex, si, playStyle, noteValue)
+                  }
+                />
+              )}
+            </div>
+          );
+        })}
+        </div>
       </div>
     );
   }

@@ -207,12 +207,15 @@ function buildSegments(cells, barDur) {
     const cellNoteValue = cell.noteValue ?? null;
     if (cell.split) {
       for (const sc of cell.subCells.filter(Boolean)) {
+        // Sub-cell override takes priority over cell override, which takes priority over global
+        const subPlayStyle = sc.playStyle ?? cellPlayStyle;
+        const subNoteValue = sc.noteValue ?? cellNoteValue;
         segments.push({
           notes: getChordNotesVoiced(sc.root, sc.typeKey, sc.octave ?? BASE_OCTAVE, sc.inversion ?? 0),
           dur: barDur / 2,
           cellIndex: i,
-          playStyle: cellPlayStyle,
-          noteValue: cellNoteValue,
+          playStyle: subPlayStyle,
+          noteValue: subNoteValue,
         });
       }
     } else if (cell.chord) {

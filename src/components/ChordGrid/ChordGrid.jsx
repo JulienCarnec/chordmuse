@@ -195,6 +195,9 @@ export function ChordGrid() {
                       onSetPlayStyle={(pid, ci, ps, nv) =>
                         dispatch({ type: 'SET_CELL_PLAY_STYLE', progressionId: pid, cellIndex: ci, playStyle: ps, noteValue: nv })
                       }
+                      onSetSubPlayStyle={(pid, ci, si, ps, nv) =>
+                        dispatch({ type: 'SET_SUB_CELL_PLAY_STYLE', progressionId: pid, cellIndex: ci, subIndex: si, playStyle: ps, noteValue: nv })
+                      }
                     />
                     <button
                       className={styles.removeCell}
