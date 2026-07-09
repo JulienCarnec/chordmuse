@@ -147,18 +147,21 @@ function buildEvents(notes, playStyle, noteValue, cellDur) {
   const stepSec = Tone.Time(noteValue).toSeconds();
   const events = [];
 
+  // Each note sustains until the end of the bar (cellDur), minus a small release gap
+  const RELEASE_GAP = 0.04; // seconds — prevents notes bleeding into the next cell
+
   if (playStyle === 'block') {
-    events.push({ time: 0, notes, duration: cellDur * 0.9 });
+    events.push({ time: 0, notes, duration: cellDur - RELEASE_GAP });
   } else if (playStyle === 'strum-on') {
     let t = 0;
     while (t < cellDur - 0.001) {
-      events.push({ time: t, notes, duration: Math.min(stepSec * 0.9, cellDur - t) });
+      events.push({ time: t, notes, duration: cellDur - t - RELEASE_GAP });
       t += stepSec;
     }
   } else if (playStyle === 'strum-off') {
     let t = stepSec / 2;
     while (t < cellDur - 0.001) {
-      events.push({ time: t, notes, duration: Math.min(stepSec * 0.9, cellDur - t) });
+      events.push({ time: t, notes, duration: cellDur - t - RELEASE_GAP });
       t += stepSec;
     }
   } else if (playStyle.startsWith('arpeggio')) {
@@ -168,7 +171,8 @@ function buildEvents(notes, playStyle, noteValue, cellDur) {
     let t = 0;
     let ni = 0;
     while (t < cellDur - 0.001) {
-      events.push({ time: t, notes: [seq[ni % seq.length]], duration: stepSec * 0.9 });
+      // Each arpeggio note sustains until the next note fires (legato feel)
+      events.push({ time: t, notes: [seq[ni % seq.length]], duration: stepSec - RELEASE_GAP });
       t += stepSec;
       ni++;
     }
