@@ -227,17 +227,21 @@ export function PianoKeyboard({
       prevIdx = i;
       return `${CHROMATIC[i]}${oct}`;
     });
-    playArpeggio(notes, 'up', '8n', instrument);
+    // Append root one octave up to close the scale.
+    // The last note in `notes` has octave `oct`; root sits at oct+1 (always one step above the last note).
+    const rootOctaveUp = `${CHROMATIC[rootIdx]}${oct + 1}`;
+    const allNotes = [...notes, rootOctaveUp];
+    playArpeggio(allNotes, 'up', '8n', instrument);
 
     // Cancel any previous scale timers
     scaleTimersRef.current.forEach(t => clearTimeout(t));
     scaleTimersRef.current = [];
     setPlayingScaleNotes(new Set());
 
-    // Schedule light-green highlight for each note in the arpeggio
+    // Schedule light-green highlight for each note in the arpeggio (including root octave up)
     const stepMs = Tone.Time('8n').toSeconds() * 1000;
-    const holdMs = stepMs * 0.85; // slightly shorter than step so overlap is clean
-    notes.forEach((noteWithOct, i) => {
+    const holdMs = stepMs * 0.85;
+    allNotes.forEach((noteWithOct, i) => {
       const pitchClass = noteWithOct.replace(/\d+$/, '');
       const onTimer = setTimeout(() => {
         setPlayingScaleNotes(prev => { const n = new Set(prev); n.add(pitchClass); return n; });
