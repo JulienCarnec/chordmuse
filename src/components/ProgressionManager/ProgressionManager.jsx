@@ -55,11 +55,17 @@ export function ProgressionManager() {
         <div className={styles.row}>
           <input
             className={styles.input}
-            placeholder="Progression name (e.g. Verse)"
+            list="progression-presets"
+            placeholder="Name or pick below…"
             value={newName}
             onChange={e => setNewName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && createProgression()}
           />
+          <datalist id="progression-presets">
+            {['Intro', 'Verse', 'Pre-Chorus', 'Chorus', 'Bridge', 'Break', 'Drop', 'Outro'].map(n => (
+              <option key={n} value={n} />
+            ))}
+          </datalist>
           <label className={styles.label}>Cells</label>
           <input
             type="number"
