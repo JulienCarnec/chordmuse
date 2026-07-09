@@ -9,21 +9,14 @@
   background: #fff;
 }
 
-.editorLayout {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-}
-
-.main {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.trackLayout {
+.viewLayer {
   flex: 1;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+}
+
+.hidden {
+  display: none;
 }

@@ -70,6 +70,12 @@ function reducer(state, action) {
 
     case 'SET_VIEW':
       return { ...state, activeView: action.view };
+    // Open the chord progression editor for a specific progression
+    case 'OPEN_PROGRESSION_EDITOR':
+      return { ...state, activeView: 'progression', activeProgressionId: action.id };
+    // Return to track view
+    case 'CLOSE_PROGRESSION_EDITOR':
+      return { ...state, activeView: 'track' };
     case 'SET_ACTIVE_PROGRESSION':
       return { ...state, activeProgressionId: action.id };
 

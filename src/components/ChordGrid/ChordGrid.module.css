@@ -4,6 +4,9 @@
   flex-direction: column;
   gap: 14px;
   padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 /* ─── Top panels row ──────────────────────────────────────── */

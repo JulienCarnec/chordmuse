@@ -1,8 +1,6 @@
 import { useAppState } from './state/AppContext';
 import { TopBar } from './components/TopBar/TopBar';
-import { ProgressionManager } from './components/ProgressionManager/ProgressionManager';
 import { ChordGrid } from './components/ChordGrid/ChordGrid';
-import { PlaybackBar } from './components/Playback/PlaybackBar';
 import { TrackEditor } from './components/TrackEditor/TrackEditor';
 import { loadProject } from './utils/persistence';
 import styles from './App.module.css';
@@ -21,23 +19,21 @@ function AppInner() {
     }
   }
 
+  const inProgressionEditor = state.activeView === 'progression';
+
   return (
     <div className={styles.layout}>
       <TopBar onLoad={handleLoad} />
-      <PlaybackBar />
 
-      {state.activeView === 'chords' && (
-        <div className={styles.editorLayout}>
-          <ProgressionManager />
-          <main className={styles.main}>
-            <ChordGrid />
-          </main>
-        </div>
-      )}
+      {/* Track view — always mounted, hidden when editing a progression */}
+      <div className={`${styles.viewLayer} ${inProgressionEditor ? styles.hidden : ''}`}>
+        <TrackEditor />
+      </div>
 
-      {state.activeView === 'track' && (
-        <div className={styles.trackLayout}>
-          <TrackEditor />
+      {/* Progression editor — slides in over the track view */}
+      {inProgressionEditor && (
+        <div className={styles.viewLayer}>
+          <ChordGrid />
         </div>
       )}
     </div>

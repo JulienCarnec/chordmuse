@@ -10,6 +10,12 @@ import { getChordNotesVoiced, CHORD_TYPES } from '../../theory/chords';
 import { noteIndex } from '../../theory/notes';
 import styles from './ChordGrid.module.css';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ChordGrid is the full progression editor view.
+// It is rendered when activeView === 'progression'.
+// The close button to return to the track view is in the TopBar.
+// ─────────────────────────────────────────────────────────────────────────────
+
 const CELLS_PER_ROW = 8;
 
 function chunkRows(arr, size) {

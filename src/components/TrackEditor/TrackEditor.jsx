@@ -1,24 +1,55 @@
 import { useState, useRef } from 'react';
 import { useAppState } from '../../state/AppContext';
-import { usePlayback } from '../Playback/usePlayback';
 import { PianoKeyboard } from '../PianoKeyboard/PianoKeyboard';
 import styles from './TrackEditor.module.css';
+
+const TIME_SIGS = ['4/4', '3/4', '6/8', '2/4', '5/4', '7/8', '12/8'];
+const INSTRUMENTS = ['piano', 'synth', 'strings', 'pad', 'guitar'];
 
 export function TrackEditor() {
   const { state, dispatch } = useAppState();
   const {
     track, progressions, progressionOrder,
     isPlaying, playbackCursor, playbackActiveNotes, playbackNotesDuration,
-    bpm, timeSig, instrument, metronome,
+    bpm, timeSig, instrument,
     trackName, trackDescription,
     scaleRoot, scaleKey,
   } = state;
-  const { play, stop } = usePlayback();
+
+  // ── Create progression form ──────────────────────────────────
+  const [newName, setNewName] = useState('');
+  const [newSize, setNewSize] = useState(4);
+
+  // ── Delete confirmation ──────────────────────────────────────
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   // ── Drag state ──────────────────────────────────────────────
   const dragIndexRef = useRef(null);
   const [dropIndex, setDropIndex] = useState(null);
 
+  function createProgression() {
+    if (!newName.trim()) return;
+    const id = `prog-${Date.now()}`;
+    dispatch({ type: 'CREATE_PROGRESSION', id, name: newName.trim(), size: newSize });
+    setNewName('');
+  }
+
+  function addToTrack(progressionId) {
+    dispatch({ type: 'ADD_TO_TRACK', progressionId });
+  }
+
+  function requestDelete(id) {
+    setConfirmDeleteId(id);
+  }
+
+  function confirmDelete() {
+    if (confirmDeleteId) {
+      dispatch({ type: 'DELETE_PROGRESSION', id: confirmDeleteId });
+    }
+    setConfirmDeleteId(null);
+  }
+
+  // ── Drag handlers ────────────────────────────────────────────
   function handleDragStart(e, idx) {
     dragIndexRef.current = idx;
     const ghost = document.createElement('div');
@@ -34,8 +65,7 @@ export function TrackEditor() {
     e.preventDefault();
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
-    const mid = rect.top + rect.height / 2;
-    const slot = e.clientY < mid ? idx : idx + 1;
+    const slot = e.clientY < rect.top + rect.height / 2 ? idx : idx + 1;
     if (slot !== dropIndex) setDropIndex(slot);
     e.dataTransfer.dropEffect = e.ctrlKey ? 'copy' : 'move';
   }
@@ -43,8 +73,7 @@ export function TrackEditor() {
   function handleDragOverAfterLast(e) {
     e.preventDefault();
     e.stopPropagation();
-    const slot = track.length;
-    if (slot !== dropIndex) setDropIndex(slot);
+    if (track.length !== dropIndex) setDropIndex(track.length);
   }
 
   function handleDrop(e, slot) {
@@ -55,11 +84,7 @@ export function TrackEditor() {
     dragIndexRef.current = null;
     setDropIndex(null);
     if (from === null || from === undefined) return;
-    if (copy) {
-      dispatch({ type: 'COPY_TRACK_ITEM', from, to: slot });
-    } else {
-      dispatch({ type: 'REORDER_TRACK', from, to: slot });
-    }
+    dispatch({ type: copy ? 'COPY_TRACK_ITEM' : 'REORDER_TRACK', from, to: slot });
   }
 
   function handleDragEnd() {
@@ -67,80 +92,145 @@ export function TrackEditor() {
     setDropIndex(null);
   }
 
-  // ── Playback ────────────────────────────────────────────────
-  function addToTrack(progressionId) {
-    dispatch({ type: 'ADD_TO_TRACK', progressionId });
-  }
-
-  function playTrack() {
-    const allSegments = [];
-    for (const { progressionId, repetitions } of track) {
-      const prog = progressions[progressionId];
-      if (!prog) continue;
-      for (let r = 0; r < repetitions; r++) {
-        allSegments.push({ cells: prog.cells, progressionId: prog.id });
-      }
-    }
-    if (!allSegments.length) return;
-    play({
-      cells: allSegments.flatMap(s => s.cells),
-      progressionId: allSegments[0].progressionId,
-      bpm, timeSig, instrument,
-      playStyle: 'block', noteValue: '4n',
-      metronome,
-    });
-  }
-
-  const pianoPlaybackNotes = (isPlaying) ? (playbackActiveNotes?.length ? playbackActiveNotes : (playbackCursor?.notes ?? null)) : null;
+  const pianoPlaybackNotes = isPlaying
+    ? (playbackActiveNotes?.length ? playbackActiveNotes : (playbackCursor?.notes ?? null))
+    : null;
 
   return (
     <div className={styles.wrapper}>
-      {/* ── Header ── */}
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <input
-            className={styles.trackNameInput}
-            placeholder="Track name…"
-            value={trackName}
-            onChange={e => dispatch({ type: 'SET_TRACK_NAME', name: e.target.value })}
-          />
+
+      {/* ── Delete confirmation dialog ─────────────────────── */}
+      {confirmDeleteId && (
+        <div className={styles.dialogOverlay}>
+          <div className={styles.dialog}>
+            <p className={styles.dialogMsg}>
+              Delete <strong>{progressions[confirmDeleteId]?.name}</strong>?<br />
+              <span className={styles.dialogSub}>This cannot be undone. Any track entries using it will be removed.</span>
+            </p>
+            <div className={styles.dialogActions}>
+              <button className={styles.dialogCancel} onClick={() => setConfirmDeleteId(null)}>Cancel</button>
+              <button className={styles.dialogConfirm} onClick={confirmDelete}>Delete</button>
+            </div>
+          </div>
         </div>
-        <div className={styles.actions}>
-          <button className={`${styles.playBtn} ${isPlaying ? styles.stopBtn : ''}`}
-            onClick={isPlaying ? stop : playTrack}>
-            {isPlaying ? '■ Stop' : '▶ Play Track'}
-          </button>
+      )}
+
+      {/* ── Header ─────────────────────────────────────────── */}
+      <div className={styles.header}>
+        <input
+          className={styles.trackNameInput}
+          placeholder="Track name…"
+          value={trackName}
+          onChange={e => dispatch({ type: 'SET_TRACK_NAME', name: e.target.value })}
+        />
+        {/* Global settings row */}
+        <div className={styles.settingsRow}>
+          <label className={styles.settingLabel}>BPM</label>
+          <input
+            type="number"
+            className={styles.settingInput}
+            value={bpm}
+            min={20} max={300}
+            onChange={e => dispatch({ type: 'SET_BPM', bpm: Number(e.target.value) })}
+          />
+          <label className={styles.settingLabel}>Time</label>
+          <select
+            className={styles.settingSelect}
+            value={timeSig}
+            onChange={e => dispatch({ type: 'SET_TIME_SIG', timeSig: e.target.value })}
+          >
+            {TIME_SIGS.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <label className={styles.settingLabel}>Instrument</label>
+          <select
+            className={styles.settingSelect}
+            value={instrument}
+            onChange={e => dispatch({ type: 'SET_INSTRUMENT', instrument: e.target.value })}
+          >
+            {INSTRUMENTS.map(i => <option key={i} value={i}>{i}</option>)}
+          </select>
         </div>
       </div>
 
-      {/* ── Description ── */}
+      {/* ── Description ─────────────────────────────────────── */}
       <div className={styles.descSection}>
         <textarea
           className={styles.descTextarea}
           placeholder="Track description, notes, lyrics…"
           value={trackDescription}
-          rows={3}
+          rows={2}
           onChange={e => dispatch({ type: 'SET_TRACK_DESCRIPTION', description: e.target.value })}
         />
       </div>
 
-      {/* ── Body: progressions + arrangement ── */}
+      {/* ── Body ────────────────────────────────────────────── */}
       <div className={styles.body}>
-        {/* Left: available progressions */}
-        <div className={styles.available}>
-          <h3 className={styles.subTitle}>Progressions</h3>
+
+        {/* Left: progressions library */}
+        <div className={styles.library}>
+          <div className={styles.libraryHeader}>
+            <h3 className={styles.subTitle}>Progressions</h3>
+          </div>
+
+          {/* Create new */}
+          <div className={styles.createRow}>
+            <input
+              className={styles.createInput}
+              list="progression-presets"
+              placeholder="Name…"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && createProgression()}
+            />
+            <datalist id="progression-presets">
+              {['Intro','Verse','Pre-Chorus','Chorus','Bridge','Break','Drop','Outro'].map(n => (
+                <option key={n} value={n} />
+              ))}
+            </datalist>
+            <input
+              type="number"
+              className={styles.sizeInput}
+              value={newSize}
+              min={1} max={32}
+              title="Number of cells"
+              onChange={e => setNewSize(Number(e.target.value))}
+            />
+            <button
+              className={styles.createBtn}
+              onClick={createProgression}
+              disabled={!newName.trim()}
+            >+ New</button>
+          </div>
+
+          {/* Progression cards */}
+          {!progressionOrder.length && (
+            <p className={styles.hint}>Create your first progression above.</p>
+          )}
           {progressionOrder.map(id => (
-            <div key={id} className={styles.progItem}>
-              <span>{progressions[id].name}</span>
-              <button className={styles.addBtn} onClick={() => addToTrack(id)}>+ Add</button>
+            <div key={id} className={styles.progCard}>
+              <span className={styles.progCardName}>{progressions[id].name}</span>
+              <div className={styles.progCardActions}>
+                <button
+                  className={styles.editBtn}
+                  title="Edit this progression"
+                  onClick={() => dispatch({ type: 'OPEN_PROGRESSION_EDITOR', id })}
+                >✎ Edit</button>
+                <button
+                  className={styles.addToTrackBtn}
+                  title="Add to arrangement"
+                  onClick={() => addToTrack(id)}
+                >+ Add</button>
+                <button
+                  className={styles.deleteProgBtn}
+                  title="Delete progression"
+                  onClick={() => requestDelete(id)}
+                >🗑</button>
+              </div>
             </div>
           ))}
-          {!progressionOrder.length && (
-            <p className={styles.hint}>Create progressions in Chord Progressions first.</p>
-          )}
         </div>
 
-        {/* Right: track arrangement */}
+        {/* Right: arrangement */}
         <div
           className={styles.arrangement}
           onDragOver={e => e.preventDefault()}
@@ -148,23 +238,18 @@ export function TrackEditor() {
         >
           <h3 className={styles.subTitle}>
             Arrangement
-            <span className={styles.dragHint}>— drag to reorder · Ctrl+drag to copy</span>
+            <span className={styles.dragHint}>drag to reorder · Ctrl+drag to copy</span>
           </h3>
           {!track.length && (
             <p className={styles.hint}>Add progressions from the left panel.</p>
           )}
-
           {track.map(({ progressionId, repetitions }, idx) => {
             const prog = progressions[progressionId];
             const isCurrentProg = isPlaying && playbackCursor?.progressionId === progressionId;
             const isDragging = dragIndexRef.current === idx;
-            const showDropBefore = dropIndex === idx;
-
             return (
               <div key={`${progressionId}-${idx}`} className={styles.trackItemOuter}>
-                {/* Drop indicator above this item */}
-                {showDropBefore && <div className={styles.dropIndicator} />}
-
+                {dropIndex === idx && <div className={styles.dropIndicator} />}
                 <div
                   className={`${styles.trackItem} ${isCurrentProg ? styles.current : ''} ${isDragging ? styles.itemDragging : ''}`}
                   draggable
@@ -173,8 +258,7 @@ export function TrackEditor() {
                   onDrop={e => handleDrop(e, dropIndex ?? idx)}
                   onDragEnd={handleDragEnd}
                 >
-                  {/* Drag handle */}
-                  <span className={styles.dragHandle} title="Drag to reorder">⠿</span>
+                  <span className={styles.dragHandle}>⠿</span>
                   <span className={styles.trackName}>{prog?.name ?? '?'}</span>
                   <label className={styles.repLabel}>×</label>
                   <input
@@ -193,10 +277,8 @@ export function TrackEditor() {
               </div>
             );
           })}
-
-          {/* Drop zone after the last item */}
           <div
-            className={`${styles.dropZoneEnd} ${dropIndex === track.length ? styles.dropZoneEndActive : ''}`}
+            className={styles.dropZoneEnd}
             onDragOver={handleDragOverAfterLast}
             onDrop={e => handleDrop(e, track.length)}
           >
@@ -205,7 +287,7 @@ export function TrackEditor() {
         </div>
       </div>
 
-      {/* ── Piano keyboard ── */}
+      {/* ── Piano keyboard ─────────────────────────────────── */}
       <div className={styles.pianoSection}>
         <PianoKeyboard
           scaleRoot={scaleRoot}
