@@ -68,6 +68,8 @@
   padding-bottom: 5px;
   box-sizing: border-box;
   z-index: 1;
+  /* allow the black key child to overflow the white key bounds */
+  overflow: visible;
 }
 .white:hover { background: #f0f9ff; }
 
@@ -81,7 +83,9 @@
 
 .black {
   position: absolute;
-  /* sits on the right edge of the white key it belongs to, centred on the boundary */
+  /* centred on the right boundary of the parent white key:
+     key width=36, black width=24 → offset = 36 - 24/2 = 24px from left of white key,
+     expressed as right: -(24/2) = -12px */
   right: -12px;
   top: 0;
   width: 24px;
@@ -89,7 +93,8 @@
   background: #1f2937;
   border-radius: 0 0 4px 4px;
   cursor: pointer;
-  z-index: 2;
+  /* must be above all white keys */
+  z-index: 10;
   box-sizing: border-box;
 }
 .black:hover { background: #374151; }
