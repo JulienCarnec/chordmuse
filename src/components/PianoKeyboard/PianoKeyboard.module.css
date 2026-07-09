@@ -48,7 +48,7 @@
 .keyboard {
   position: relative;
   height: 130px;
-  /* width is set inline */
+  /* width set inline */
 }
 
 /* ─── White keys ──────────────────────────────────────────── */
@@ -68,8 +68,6 @@
   padding-bottom: 5px;
   box-sizing: border-box;
   z-index: 1;
-  /* allow the black key child to overflow the white key bounds */
-  overflow: visible;
 }
 .white:hover { background: #f0f9ff; }
 
@@ -81,23 +79,33 @@
 
 /* ─── Black keys ──────────────────────────────────────────── */
 
+/* Black keys are siblings of white keys, so they paint on top with no clipping */
 .black {
   position: absolute;
-  /* centred on the right boundary of the parent white key:
-     key width=36, black width=24 → offset = 36 - 24/2 = 24px from left of white key,
-     expressed as right: -(24/2) = -12px */
-  right: -12px;
   top: 0;
   width: 24px;
   height: 80px;
   background: #1f2937;
   border-radius: 0 0 4px 4px;
   cursor: pointer;
-  /* must be above all white keys */
-  z-index: 10;
+  z-index: 2;
   box-sizing: border-box;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 4px;
 }
 .black:hover { background: #374151; }
+
+.blackNoteName {
+  font-size: 8px;
+  color: #9ca3af;
+  pointer-events: none;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  line-height: 1;
+}
 
 /* ─── Highlight states ────────────────────────────────────── */
 
