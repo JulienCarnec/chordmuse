@@ -7,6 +7,46 @@ import { getChordNotesVoiced } from '../../theory/chords';
 const BASE_OCTAVE = 4;
 const RELEASE_GAP = 0.04;
 
+// ─── Humanization constants ────────────────────────────────────────────────────
+// Maximum timing jitter in seconds at humanize=1
+const MAX_JITTER_SEC = 0.022;
+// Maximum velocity scatter (±) at humanize=1
+const MAX_VEL_SCATTER = 0.12;
+
+/**
+ * Return a random float in [-1, 1]
+ */
+function rnd() { return Math.random() * 2 - 1; }
+
+/**
+ * Clamp a value between lo and hi.
+ */
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+/**
+ * Compute humanized velocity for a single event.
+ *
+ * baseVel   – the deterministic baseline (0–1) for this position
+ * humanize  – amount 0–1
+ *
+ * Returns a velocity clamped to [0.25, 1.0].
+ */
+function humanVel(baseVel, humanize) {
+  if (humanize === 0) return baseVel;
+  return clamp(baseVel + rnd() * MAX_VEL_SCATTER * humanize, 0.25, 1.0);
+}
+
+/**
+ * Compute timing jitter for a single event (in seconds).
+ * humanize – amount 0–1
+ */
+function humanJitter(humanize) {
+  if (humanize === 0) return 0;
+  return rnd() * MAX_JITTER_SEC * humanize;
+}
+
+// ─── Hook ─────────────────────────────────────────────────────────────────────
+
 export function usePlayback() {
   const { state, dispatch } = useAppState();
   const { getSynth } = useSampler();
@@ -29,14 +69,12 @@ export function usePlayback() {
     dispatch({ type: 'SET_PLAYBACK_CURSOR', cursor: null });
   }, [dispatch]);
 
-  // Pause: freeze transport, keep cursor/notes highlighted
   const pause = useCallback(() => {
     Tone.getTransport().pause();
     dispatch({ type: 'SET_PLAYING', playing: false });
     dispatch({ type: 'SET_PAUSED', paused: true });
   }, [dispatch]);
 
-  // Resume from pause
   const resume = useCallback(() => {
     Tone.getTransport().start();
     dispatch({ type: 'SET_PLAYING', playing: true });
@@ -52,6 +90,7 @@ export function usePlayback() {
     playStyle = 'block',
     noteValue = '4n',
     arpOctaves = 1,
+    humanize = 0,       // 0–1
     metronome,
   }) => {
     await Tone.start();
@@ -65,7 +104,6 @@ export function usePlayback() {
     const oneBeatSec = Tone.Time(`${beatUnit}n`).toSeconds();
     const barDur = oneBeatSec * beatsPerBar;
 
-    // Build the flat list of chord segments once
     const segments = buildSegments(cells, barDur);
     const totalDur = segments.reduce((s, g) => s + g.dur, 0);
 
@@ -73,23 +111,25 @@ export function usePlayback() {
       let cursor = timeOffset;
       for (const seg of segments) {
         const { notes, dur, cellIndex } = seg;
-        const events = buildEvents(notes, playStyle, noteValue, dur, arpOctaves);
+        const events = buildEvents(notes, playStyle, noteValue, dur, arpOctaves, humanize);
 
         for (const ev of events) {
-          const t = cursor + ev.time;
-          // Capture ev by value for closure
+          // Apply timing jitter — keep within cell bounds
+          const rawT = cursor + ev.time + ev.jitter;
+          const t = Math.max(cursor, rawT); // never fire before segment start
           const evNotes = ev.notes;
           const evDur = ev.duration;
+          const evVel = ev.velocity;
           const part = new Tone.ToneEvent((time) => {
-            synth.triggerAttackRelease(evNotes, evDur, time);
+            synth.triggerAttackRelease(evNotes, evDur, time, evVel);
           });
           part.start(t);
           partsRef.current.push(part);
         }
 
-        // Cursor marker — includes note names for piano roll highlight
+        // Cursor marker for piano roll
         const ci = cellIndex;
-        const noteNames = notes.map(n => n.replace(/\d+$/, '')); // strip octave
+        const noteNames = notes.map(n => n.replace(/\d+$/, ''));
         const markerEvent = new Tone.ToneEvent(() => {
           dispatch({ type: 'SET_PLAYBACK_CURSOR', cursor: { progressionId, cellIndex: ci, notes: noteNames } });
         });
@@ -101,11 +141,9 @@ export function usePlayback() {
       return cursor;
     }
 
-    // Schedule first pass immediately, then loop
     let loopStart = 0;
     scheduleSegments(loopStart);
 
-    // Schedule a repeating loop: every totalDur seconds, reschedule all segments
     const loopEvent = new Tone.Loop((time) => {
       loopStart += totalDur;
       scheduleSegments(loopStart);
@@ -149,39 +187,73 @@ function buildSegments(cells, barDur) {
   return segments;
 }
 
-/** Shift a voiced note string up by one octave, e.g. "C4" → "C5", "A#3" → "A#4" */
+/** Shift a voiced note string up by one octave, e.g. "C4" → "C5" */
 function shiftOctaveUp(noteStr) {
-  // note name is everything before the last digit(s)
   const match = noteStr.match(/^([A-G]#?)(\d+)$/);
   if (!match) return noteStr;
   return `${match[1]}${Number(match[2]) + 1}`;
 }
 
-function buildEvents(notes, playStyle, noteValue, cellDur, arpOctaves = 1) {
+/**
+ * Determine the baseline velocity for a strum event.
+ *
+ * stepSec    – duration of one subdivision step
+ * t          – offset within the cell (seconds)
+ * isFirstBar – whether this is the very first strum of the cell
+ * isOnBeat   – whether t aligns with a beat boundary (within tolerance)
+ * style      – 'strum-on' | 'strum-off'
+ */
+function strumBaseVel(t, stepSec, isFirstEvent, isOnBeat, style) {
+  if (style === 'strum-on') {
+    if (isFirstEvent) return 0.95;   // downbeat accent
+    if (isOnBeat)     return 0.75;   // subsequent on-beat
+    return 0.60;                     // off-beat
+  }
+  // strum-off: everything starts softer
+  if (isOnBeat) return 0.70;
+  return 0.55;
+}
+
+/**
+ * Build the event list for one chord segment.
+ * Each event: { time, notes, duration, velocity, jitter }
+ */
+function buildEvents(notes, playStyle, noteValue, cellDur, arpOctaves = 1, humanize = 0) {
   const stepSec = Tone.Time(noteValue).toSeconds();
   const events = [];
+  // Tolerance for "on-beat" detection: within 2 ms
+  const beatTol = 0.002;
 
   if (playStyle === 'block') {
-    events.push({ time: 0, notes, duration: cellDur - RELEASE_GAP });
+    events.push({
+      time: 0,
+      notes,
+      duration: cellDur - RELEASE_GAP,
+      velocity: humanVel(0.82, humanize),
+      jitter:   humanJitter(humanize),
+    });
 
-  } else if (playStyle === 'strum-on') {
-    let t = 0;
+  } else if (playStyle === 'strum-on' || playStyle === 'strum-off') {
+    let t = playStyle === 'strum-on' ? 0 : stepSec / 2;
+    let isFirst = true;
     while (t < cellDur - 0.001) {
-      events.push({ time: t, notes, duration: cellDur - t - RELEASE_GAP });
+      // On-beat when t is a near-integer multiple of stepSec
+      const isOnBeat = (t % stepSec) < beatTol || (stepSec - (t % stepSec)) < beatTol;
+      const baseVel = strumBaseVel(t, stepSec, isFirst, isOnBeat, playStyle);
+      events.push({
+        time: t,
+        notes,
+        duration: cellDur - t - RELEASE_GAP,
+        velocity: humanVel(baseVel, humanize),
+        jitter:   humanJitter(humanize),
+      });
       t += stepSec;
-    }
-
-  } else if (playStyle === 'strum-off') {
-    let t = stepSec / 2;
-    while (t < cellDur - 0.001) {
-      events.push({ time: t, notes, duration: cellDur - t - RELEASE_GAP });
-      t += stepSec;
+      isFirst = false;
     }
 
   } else if (playStyle.startsWith('arpeggio')) {
     const sustain = playStyle.endsWith('-sustain');
     const baseStyle = playStyle.replace('-sustain', '');
-    // Build one-octave sequence, then optionally append notes shifted up an octave
     let seq = [...notes];
     if (arpOctaves === 2) seq = [...seq, ...notes.map(shiftOctaveUp)];
     if (baseStyle === 'arpeggio-down') seq = seq.reverse();
@@ -190,13 +262,20 @@ function buildEvents(notes, playStyle, noteValue, cellDur, arpOctaves = 1) {
     let ni = 0;
     while (t < cellDur - 0.001) {
       const duration = sustain
-        ? cellDur - t - RELEASE_GAP   // sustain to end of bar
-        : stepSec - RELEASE_GAP;       // sustain to next note
-      events.push({ time: t, notes: [seq[ni % seq.length]], duration });
+        ? cellDur - t - RELEASE_GAP
+        : stepSec - RELEASE_GAP;
+      events.push({
+        time: t,
+        notes: [seq[ni % seq.length]],
+        duration,
+        velocity: humanVel(0.78, humanize),
+        jitter:   humanJitter(humanize),
+      });
       t += stepSec;
       ni++;
     }
   }
+
   return events;
 }
 

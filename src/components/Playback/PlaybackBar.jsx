@@ -24,13 +24,14 @@ export function PlaybackBar() {
   const [playStyle, setPlayStyle] = useState('block');
   const [noteValue, setNoteValue] = useState('4n');
   const [arpOctaves, setArpOctaves] = useState(1);
+  const [humanize, setHumanize] = useState(0);
 
   const { isPlaying, isPaused, bpm, timeSig, instrument, metronome, progressions, activeProgressionId } = state;
 
   function handlePlay() {
     const prog = progressions[activeProgressionId];
     if (!prog) return;
-    play({ cells: prog.cells, progressionId: prog.id, bpm, timeSig, instrument, playStyle, noteValue, arpOctaves, metronome });
+    play({ cells: prog.cells, progressionId: prog.id, bpm, timeSig, instrument, playStyle, noteValue, arpOctaves, humanize: humanize / 100, metronome });
   }
 
   function adjustBpm(delta) {
@@ -96,6 +97,19 @@ export function PlaybackBar() {
       <select className={styles.select} value={noteValue} onChange={e => setNoteValue(e.target.value)}>
         {NOTE_VALUES.map(v => <option key={v} value={v}>{v}</option>)}
       </select>
+
+      {/* Humanize slider */}
+      <div className={styles.humanizeGroup}>
+        <span className={styles.humanizeLabel}>Humanize</span>
+        <input
+          type="range"
+          className={styles.humanizeSlider}
+          min={0} max={100} step={1}
+          value={humanize}
+          onChange={e => setHumanize(Number(e.target.value))}
+        />
+        <span className={styles.humanizeVal}>{humanize}</span>
+      </div>
 
       {/* Metronome */}
       <label className={styles.metLabel}>

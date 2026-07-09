@@ -99,3 +99,29 @@
   font-weight: 600;
 }
 .arpOctActive:hover { background: #2563eb; }
+
+/* ─── Humanize slider ─────────────────────────────────────── */
+.humanizeGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.humanizeLabel {
+  font-size: 12px;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+.humanizeSlider {
+  width: 80px;
+  accent-color: #a78bfa;
+  cursor: pointer;
+}
+
+.humanizeVal {
+  font-size: 11px;
+  color: #c4b5fd;
+  min-width: 22px;
+  text-align: right;
+}
