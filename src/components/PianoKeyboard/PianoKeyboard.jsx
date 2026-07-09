@@ -175,14 +175,14 @@ export function PianoKeyboard({ scaleRoot, scaleKey, selectedChord, instrument =
               style={{ left: wIdx * whiteW, width: whiteW, height: whiteH }}
               onClick={e => handleKeyClick(e, note, octave)}
             >
-              {/* Scale dot */}
-              {layers.scale && (
+              {layers.scale ? (
                 <span
-                  className={styles.scaleDot}
-                  style={{ width: dotSize, height: dotSize, bottom: dotSize + 2 }}
-                />
+                  className={styles.scaleLabel}
+                  style={{ width: dotSize * 1.8, height: dotSize * 1.8, fontSize: Math.max(7, Math.round(dotSize * 0.9)) }}
+                >{note}</span>
+              ) : (
+                <span className={styles.noteName} style={{ fontSize: labelSize }}>{note}</span>
               )}
-              <span className={styles.noteName} style={{ fontSize: labelSize }}>{note}</span>
             </div>
           );
         })}
@@ -205,14 +205,14 @@ export function PianoKeyboard({ scaleRoot, scaleKey, selectedChord, instrument =
               style={{ left, width: blackW, height: blackH }}
               onClick={e => handleKeyClick(e, sharp, octave)}
             >
-              {/* Scale dot for black keys */}
-              {layers.scale && (
+              {layers.scale ? (
                 <span
-                  className={styles.scaleDotBlack}
-                  style={{ width: dotSize * 0.7, height: dotSize * 0.7, bottom: dotSize }}
-                />
+                  className={styles.scaleLabelBlack}
+                  style={{ width: dotSize * 1.5, height: dotSize * 1.5, fontSize: Math.max(6, Math.round(dotSize * 0.75)) }}
+                >{displayName}</span>
+              ) : (
+                <span className={styles.blackNoteName} style={{ fontSize: blackLabelSize }}>{displayName}</span>
               )}
-              <span className={styles.blackNoteName} style={{ fontSize: blackLabelSize }}>{displayName}</span>
             </div>
           );
         })}

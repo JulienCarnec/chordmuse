@@ -134,34 +134,42 @@
 .black:hover { filter: brightness(1.3); }
 
 .blackNoteName {
-  color: rgba(255,255,255,0.45);
+  color: rgba(255,255,255,0.55);
   pointer-events: none;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  transform: rotate(180deg);
+  line-height: 1;
+  /* horizontal — no writing-mode */
+}
+
+/* ─── Scale note labels (green circle, white bold text) ─────── */
+
+/* White keys: green circle sitting above the note name area */
+.scaleLabel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #16a34a;
+  color: #fff;
+  font-weight: 700;
+  pointer-events: none;
+  flex-shrink: 0;
+  margin-bottom: 2px;
   line-height: 1;
 }
 
-/* ─── Scale dots ─────────────────────────────────────────── */
-
-/* Dot sits just above the note label on white keys */
-.scaleDot {
-  display: block;
+/* Black keys: same but slightly smaller, sits inside the dark key */
+.scaleLabelBlack {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
   background: #16a34a;
+  color: #fff;
+  font-weight: 700;
   pointer-events: none;
   flex-shrink: 0;
   margin-bottom: 2px;
-}
-
-/* Dot on black keys — lighter so it shows on the dark bg */
-.scaleDotBlack {
-  display: block;
-  border-radius: 50%;
-  background: #4ade80;
-  pointer-events: none;
-  flex-shrink: 0;
-  margin-bottom: 2px;
+  line-height: 1;
 }
 
 /* ─── Background highlight layers ───────────────────────────
