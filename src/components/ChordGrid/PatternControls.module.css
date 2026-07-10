@@ -65,3 +65,24 @@
   color: #6b7280;
   cursor: pointer;
 }
+
+.editPatternBtn {
+  padding: 3px 10px;
+  border: 1px solid #6b7280;
+  border-radius: 5px;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.editPatternBtn:hover { background: #e5e7eb; }
+
+.miniLoopLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #6b7280;
+  cursor: pointer;
+}

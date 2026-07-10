@@ -41,6 +41,31 @@ export function getChordNotes(root, typeKey) {
  * baseOctave: e.g. 4
  * Returns e.g. ['E4','G4','C5'] for C major 1st inversion at octave 4
  */
+/**
+ * Voice a chord object `{ root, typeKey, octave?, inversion?, customNotes? }`
+ * into an array of "note+octave" strings ready for playback.
+ * Handles both standard chords and custom (undetermined) note sets.
+ */
+export function voiceChord(chord, baseOctave) {
+  if (!chord) return [];
+  const oct = baseOctave ?? chord.octave ?? 4;
+  // Custom chord: voice customNotes ascending from baseOctave
+  if (!chord.typeKey && chord.customNotes?.length) {
+    const sorted = [...chord.customNotes].sort((a, b) => noteIndex(a) - noteIndex(b));
+    let octave = oct;
+    let prevIdx = -1;
+    return sorted.map(noteName => {
+      const idx = noteIndex(noteName);
+      if (prevIdx !== -1 && idx <= prevIdx) octave++;
+      prevIdx = idx;
+      // Always store with the canonical sharp name so the sampler can find the sample
+      const sharpName = noteName;
+      return `${sharpName}${octave}`;
+    });
+  }
+  return getChordNotesVoiced(chord.root, chord.typeKey, oct, chord.inversion ?? 0);
+}
+
 export function getChordNotesVoiced(root, typeKey, baseOctave = 4, inversion = 0) {
   const def = CHORD_TYPES[typeKey];
   if (!def) return [];
@@ -111,26 +136,24 @@ export function getChordRole(chordRoot, chordType, scaleRoot, scaleKey) {
   if (!scaleNotes.length) return 'out';
 
   const chordNotes = getChordNotes(chordRoot, chordType);
-  const rootIdx = noteIndex(scaleRoot);
 
-  // Degree notes in the scale (0-based, i.e. degree I = index 0)
-  const degreeI   = scaleNotes[0];
-  const degreeII  = scaleNotes[1];
-  const degreeIV  = scaleNotes[3];
-  const degreeV   = scaleNotes[4];
+  // Use pitch-class indices for all degree comparisons so that enharmonic
+  // spellings (e.g. A# vs Bb) never cause false mismatches.
+  const chordRootIdx = noteIndex(chordRoot);
+  const degreeIIIdx  = noteIndex(scaleNotes[1]);
+  const degreeIVIdx  = noteIndex(scaleNotes[3]);
+  const degreeVIdx   = noteIndex(scaleNotes[4]);
 
-  // Dominant of I: a chord whose root is the V degree
-  const isDominantI = chordRoot === degreeV;
-  // Dominant of II: a chord whose root is a perfect fifth above degree II
-  const dominantOfII = noteName(noteIndex(degreeII) + 7);
-  const isDominantII = chordRoot === dominantOfII;
+  // Dominant of I: chord root is the V degree
+  const isDominantI = chordRootIdx === degreeVIdx;
+  // Dominant of II: chord root is a perfect fifth above degree II
+  const isDominantII = chordRootIdx === (degreeIIIdx + 7) % 12;
+  // Subdominant of I: chord root is degree IV
+  const isSubdominantI = chordRootIdx === degreeIVIdx;
+  // Subdominant of II: chord root is degree II
+  const isSubdominantII = chordRootIdx === degreeIIIdx;
 
-  // Subdominant of I: root is degree IV
-  const isSubdominantI = chordRoot === degreeIV;
-  // Subdominant of II: root is degree II
-  const isSubdominantII = chordRoot === degreeII;
-
-  // In-scale: all chord notes belong to the scale
+  // In-scale: all chord notes belong to the scale (by pitch-class index)
   const scaleSet = new Set(scaleNotes.map(n => noteIndex(n)));
   const allInScale = chordNotes.every(n => scaleSet.has(noteIndex(n)));
 

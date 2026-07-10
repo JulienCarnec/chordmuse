@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useT } from '../../i18n/index';
 import styles from './ReverbKnob.module.css';
 
 /**
@@ -10,6 +11,7 @@ import styles from './ReverbKnob.module.css';
  *   size        – diameter in px (default 40)
  */
 export function ReverbKnob({ value, onChange, size = 40 }) {
+  const t = useT();
   const isDragging = useRef(false);
   const dragStartY = useRef(0);
   const dragStartVal = useRef(0);
@@ -85,7 +87,7 @@ export function ReverbKnob({ value, onChange, size = 40 }) {
   const indPt = polarToXY(angle, r - strokeW / 2 - 1);
 
   return (
-    <div className={styles.knobWrap} title={`Reverb: ${value}%`}>
+    <div className={styles.knobWrap} title={`${t.reverbLabel}: ${value}%`}>
       <svg
         width={size} height={size}
         className={styles.knob}

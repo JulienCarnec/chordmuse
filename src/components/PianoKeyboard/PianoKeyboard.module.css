@@ -51,8 +51,8 @@
   flex-shrink: 0;
 }
 .swatchHighlight { background: #3b82f6; }
-.swatchAttack    { background: #f59e0b; }
-.swatchSustain   { background: #fde68a; border: 1px solid #d97706; }
+.swatchAttack    { background: #f97316; }
+.swatchSustain   { background: #fde047; border: 1px solid #ca8a04; }
 
 .actions {
   display: flex;
@@ -88,6 +88,14 @@
   color: #7c3aed;
 }
 
+.detectedChordDraggable {
+  cursor: grab;
+  border-bottom: 1.5px dashed #7c3aed;
+  padding-bottom: 1px;
+}
+.detectedChordDraggable:hover { color: #5b21b6; border-bottom-color: #5b21b6; }
+.detectedChordDraggable:active { cursor: grabbing; }
+
 /* ─── Keyboard container ──────────────────────────────────── */
 
 .keyboard {
@@ -110,7 +118,7 @@
   padding-bottom: 5px;
   box-sizing: border-box;
   z-index: 1;
-  transition: background 0.28s ease, filter 0.05s;
+  transition: filter 0.05s;
 }
 .white:hover { filter: brightness(0.94); }
 
@@ -135,7 +143,7 @@
   align-items: center;
   justify-content: flex-end;
   padding-bottom: 4px;
-  transition: background 0.28s ease, filter 0.05s;
+  transition: filter 0.05s;
 }
 .black:hover { filter: brightness(1.3); }
 
@@ -221,21 +229,37 @@
   ) !important;
 }
 
+/* ─── Attack flash animation ─────────────────────────────────
+   Starts orange, transitions to yellow over ATTACK_MS (200ms),
+   then holds yellow for the remainder of the sustain period.  */
+
+@keyframes attackFlash {
+  0%   { background: #f97316; }   /* orange — key hit */
+  100% { background: #fde047; }   /* yellow — held */
+}
+
+@keyframes attackFlashBlack {
+  0%   { background: #c2410c; }   /* dark orange */
+  100% { background: #ca8a04; }   /* dark yellow */
+}
+
 /* ─── Background highlight layers ───────────────────────────
-   Priority: playing > invFirst > invCandidate > highlight
+   Priority: attack > sustain > invFirst > invCandidate > chordGlow > highlight
    Applied as a class; scale never sets background.        */
 
-/* White keys — no !important so CSS transitions work */
-.bg_highlight  { background: #bfdbfe; }
-.bg_attack     { background: #f59e0b; }   /* bright amber — note onset */
-.bg_sustain    { background: #fde68a; }   /* soft amber  — note held */
-.bg_invCand    { background: #bbf7d0; }
-.bg_invFirst   { background: #4ade80; }
+/* White keys */
+.bg_highlight   { background: #bfdbfe; }
+.bg_attack      { animation: attackFlash 0.2s ease-out forwards; }  /* orange → yellow */
+.bg_sustain     { background: #fde047; }                             /* solid yellow — held */
+.bg_chordGlow   { background: #c084fc; }                             /* purple glow */
+.bg_invCand     { background: #bbf7d0; }
+.bg_invFirst    { background: #4ade80; }
 
 /* Black keys */
 .bg_highlight_b  { background: #1d4ed8; }
-.bg_attack_b     { background: #b45309; }  /* bright dark-amber */
-.bg_sustain_b    { background: #d97706; }  /* softer amber */
+.bg_attack_b     { animation: attackFlashBlack 0.2s ease-out forwards; }
+.bg_sustain_b    { background: #ca8a04; }
+.bg_chordGlow_b  { background: #6d28d9; }
 .bg_invCand_b    { background: #16a34a; }
 .bg_invFirst_b   { background: #15803d; }
 

@@ -8,7 +8,151 @@ export const INITIAL_STATE = {
   bpm: 120,
   timeSig: '4/4',
   instrument: 'piano',
+  groove: 'straight',   // 'straight' | 'shuffle' | 'swing'
   metronome: { enabled: false, mode: 'click' }, // mode: 'click' | 'drum'
+
+  // Built-in + user-saved custom patterns: array of { id, name, pattern, noteValue, loop }
+  // IDs prefixed with "builtin-" are shipped with the app; user patterns use "custom-<timestamp>".
+  customPatterns: [
+    // ── Block / Strum ────────────────────────────────────────────────────────
+    {
+      id: 'builtin-block',
+      name: 'Block chord',
+      pattern: '{[a1,b1,c1]}',
+      noteValue: '4n',
+      loop: true,
+    },
+    {
+      id: 'builtin-strum-on',
+      name: 'On-beat strum',
+      pattern: '{[a1,b1,c1],[a1,b1,c1],[a1,b1,c1],[a1,b1,c1]}',
+      noteValue: '4n',
+      loop: false,
+    },
+    {
+      id: 'builtin-strum-off',
+      name: 'Off-beat strum',
+      pattern: '{,[a1,b1,c1],[a1,b1,c1],[a1,b1,c1],[a1,b1,c1]}',
+      noteValue: '4n',
+      loop: false,
+    },
+    {
+      id: 'builtin-strum-folk',
+      name: 'Folk strum (D-DU-DU)',
+      pattern: '{[a1,b1,c1],,[a1,b1,c1],[a1,b1,c1],,[a1,b1,c1],[a1,b1,c1]}',
+      noteValue: '8n',
+      loop: false,
+    },
+    {
+      id: 'builtin-strum-staccato',
+      name: 'Staccato chops',
+      pattern: '{[a1,b1,c1].,[a1,b1,c1].,[a1,b1,c1].,[a1,b1,c1].}',
+      noteValue: '4n',
+      loop: false,
+    },
+    {
+      id: 'builtin-reggae',
+      name: 'Reggae off-beat',
+      pattern: '{a0,[a1,b1,c1].,,[a1,b1,c1].}',
+      noteValue: '4n',
+      loop: false,
+    },
+    // ── Bass + chord ─────────────────────────────────────────────────────────
+    {
+      id: 'builtin-bass-chord',
+      name: 'Bass + chord',
+      pattern: '{a0,[b1,c1],a0,[b1,c1]}',
+      noteValue: '4n',
+      loop: false,
+    },
+    {
+      id: 'builtin-oom-pah-pah',
+      name: 'Oom-pah-pah (3/4)',
+      pattern: '{a0,[b1,c1],[b1,c1]}',
+      noteValue: '4n',
+      loop: false,
+    },
+    {
+      id: 'builtin-bass-walk',
+      name: 'Bass walk',
+      pattern: '{a0,a0,[b1,c1],a0}',
+      noteValue: '4n',
+      loop: false,
+    },
+    // ── Arpeggios ────────────────────────────────────────────────────────────
+    {
+      id: 'builtin-arp-up',
+      name: 'Arpeggio up',
+      pattern: '{a1,b1,c1}',
+      noteValue: '8n',
+      loop: true,
+    },
+    {
+      id: 'builtin-arp-down',
+      name: 'Arpeggio down',
+      pattern: '{c1,b1,a1}',
+      noteValue: '8n',
+      loop: true,
+    },
+    {
+      id: 'builtin-arp-updown',
+      name: 'Arpeggio up-down',
+      pattern: '{a1,b1,c1,b1}',
+      noteValue: '8n',
+      loop: true,
+    },
+    {
+      id: 'builtin-arp-2oct',
+      name: 'Arpeggio 2 octaves',
+      pattern: '{a1,b1,c1,a2,b2,c2}',
+      noteValue: '8n',
+      loop: true,
+    },
+    {
+      id: 'builtin-arp-staccato',
+      name: 'Arpeggio staccato',
+      pattern: '{a1.,b1.,c1.}',
+      noteValue: '8n',
+      loop: true,
+    },
+    // ── Figures ──────────────────────────────────────────────────────────────
+    {
+      id: 'builtin-bach',
+      name: 'Bach prelude',
+      pattern: '{a0,c0,a1,b1,c1,a1,b1,c1}',
+      noteValue: '8n',
+      loop: true,
+    },
+    {
+      id: 'builtin-bass-burst',
+      name: 'Bass + arp burst',
+      pattern: '{a0,[b1,c1],a1,c1,a1,[b1,c1]}',
+      noteValue: '8n',
+      loop: true,
+    },
+    {
+      id: 'builtin-pickup',
+      name: 'Staccato pick-up',
+      pattern: '{a1.,b1.,c1.,[a1,b1,c1]}',
+      noteValue: '8n',
+      loop: false,
+    },
+    {
+      id: 'builtin-alberti',
+      name: 'Alberti bass',
+      pattern: '{[a0,c0],a1,[b1,c1],a1}',
+      noteValue: '4n',
+      loop: true,
+    },
+    // ── 7th-chord figures ────────────────────────────────────────────────────
+    {
+      id: 'builtin-arp-7th',
+      name: 'Arpeggio (7th chord)',
+      pattern: '{a0,c1,b1,d1,c1,b1}',
+      noteValue: '8n',
+      loop: true,
+    },
+  ],
 
   // Playback
   isPlaying: false,
@@ -32,6 +176,11 @@ export const INITIAL_STATE = {
   trackName: '',
   trackDescription: '',
 
+  // Global pattern settings (saved with the project)
+  globalPlayStyle:   '{[a1,b1,c1]}',
+  globalNoteValue:   '4n',
+  globalPatternLoop: true,
+
   // Active view: 'chords' | 'track'
   activeView: 'track',
   activeProgressionId: null,
@@ -49,9 +198,37 @@ function reducer(state, action) {
       return { ...state, instrument: action.instrument };
     case 'SET_METRONOME':
       return { ...state, metronome: { ...state.metronome, ...action.payload } };
+    case 'SET_GROOVE':
+      return { ...state, groove: action.groove };
 
     case 'SET_SCALE':
       return { ...state, scaleRoot: action.root, scaleKey: action.key };
+
+    case 'SET_GLOBAL_PATTERN': {
+      // Write into the active progression's own pattern fields (per-progression pattern).
+      // Falls back to updating root state only when no progression is active (legacy path).
+      const activeProg = state.progressions[state.activeProgressionId];
+      if (activeProg) {
+        return {
+          ...state,
+          progressions: {
+            ...state.progressions,
+            [activeProg.id]: {
+              ...activeProg,
+              playStyle:   action.playStyle   ?? activeProg.playStyle   ?? state.globalPlayStyle,
+              noteValue:   action.noteValue   ?? activeProg.noteValue   ?? state.globalNoteValue,
+              patternLoop: action.patternLoop ?? activeProg.patternLoop ?? state.globalPatternLoop,
+            },
+          },
+        };
+      }
+      return {
+        ...state,
+        globalPlayStyle:   action.playStyle   ?? state.globalPlayStyle,
+        globalNoteValue:   action.noteValue   ?? state.globalNoteValue,
+        globalPatternLoop: action.patternLoop ?? state.globalPatternLoop,
+      };
+    }
 
     case 'SET_PLAYING':
       return { ...state, isPlaying: action.playing, isPaused: false, playbackActiveNotes: [] };
@@ -91,10 +268,19 @@ function reducer(state, action) {
         ...state,
         progressions: {
           ...state.progressions,
-          [id]: { id, name, cells, scaleRoot: null, scaleKey: null },
+          [id]: {
+            id, name, cells,
+            scaleRoot: null, scaleKey: null,
+            cellDuration: 'whole',
+            // Per-progression pattern — null means "inherit from app global"
+            playStyle:   null,
+            noteValue:   null,
+            patternLoop: null,
+          },
         },
         progressionOrder: [...state.progressionOrder, id],
         activeProgressionId: id,
+        activeView: 'progression',
       };
     }
 
@@ -111,12 +297,25 @@ function reducer(state, action) {
       };
     }
 
+    case 'SAVE_PATTERN': {
+      // Upsert by id — add new or replace existing
+      const existing = state.customPatterns.findIndex(p => p.id === action.pattern.id);
+      const customPatterns = existing >= 0
+        ? state.customPatterns.map((p, i) => i === existing ? action.pattern : p)
+        : [...state.customPatterns, action.pattern];
+      return { ...state, customPatterns };
+    }
+
+    case 'DELETE_PATTERN': {
+      return { ...state, customPatterns: state.customPatterns.filter(p => p.id !== action.id) };
+    }
+
     case 'SET_CELL_PLAY_STYLE': {
       const prog = state.progressions[action.progressionId];
       if (!prog) return state;
       const cells = prog.cells.map((cell, i) =>
         i === action.cellIndex
-          ? { ...cell, playStyle: action.playStyle, noteValue: action.noteValue }
+          ? { ...cell, playStyle: action.playStyle, noteValue: action.noteValue, patternLoop: action.patternLoop ?? cell.patternLoop }
           : cell
       );
       return {
@@ -132,7 +331,7 @@ function reducer(state, action) {
         if (i !== action.cellIndex || !cell.split) return cell;
         const subCells = cell.subCells.map((sc, si) =>
           si === action.subIndex && sc
-            ? { ...sc, playStyle: action.playStyle, noteValue: action.noteValue }
+            ? { ...sc, playStyle: action.playStyle, noteValue: action.noteValue, patternLoop: action.patternLoop ?? sc.patternLoop }
             : sc
         );
         return { ...cell, subCells };
@@ -287,6 +486,18 @@ function reducer(state, action) {
       };
     }
 
+    case 'SET_CELL_DURATION': {
+      const prog = state.progressions[action.progressionId];
+      if (!prog) return state;
+      return {
+        ...state,
+        progressions: {
+          ...state.progressions,
+          [action.progressionId]: { ...prog, cellDuration: action.cellDuration },
+        },
+      };
+    }
+
     case 'TRANSPOSE_PROGRESSION': {
       const prog = state.progressions[action.progressionId];
       if (!prog) return state;
@@ -342,7 +553,17 @@ function reducer(state, action) {
       return { ...state, trackDescription: action.description };
 
     case 'LOAD_PROJECT':
-      return { ...INITIAL_STATE, ...action.project };
+      return {
+        ...INITIAL_STATE,
+        ...action.project,
+        activeView: 'track',
+        // Playback state must never be restored from a saved file —
+        // the audio engine is not running when the file loads.
+        isPlaying: false,
+        isPaused:  false,
+        playbackCursor: null,
+        playbackNotes:  [],
+      };
 
     default:
       return state;

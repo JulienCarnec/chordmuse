@@ -1,42 +1,54 @@
 import { useState, useEffect, useRef } from 'react';
+import * as Tone from 'tone';
 import { useAppState } from '../../state/AppContext';
 import { ChordCell } from './ChordCell';
 import { PatternControls } from './PatternControls';
 import { ScaleSelector } from '../ScaleSelector/ScaleSelector';
 import { PianoKeyboard } from '../PianoKeyboard/PianoKeyboard';
+import { GuitarFretboard } from '../GuitarFretboard/GuitarFretboard';
 import { useSampler } from '../../audio/useSampler';
 import { usePlayback } from '../Playback/usePlayback';
-import { getChordNotesVoiced, CHORD_TYPES } from '../../theory/chords';
-import { noteIndex } from '../../theory/notes';
+import { getChordNotesVoiced, voiceChord, CHORD_TYPES, identifyChord } from '../../theory/chords';
+import { CHROMATIC, noteIndex, preferFlat, displayNote } from '../../theory/notes';
+import { getScaleNoteSet } from '../../theory/scales';
+import { useT } from '../../i18n/index';
 import styles from './ChordGrid.module.css';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ChordGrid is the full progression editor view.
-// It is rendered when activeView === 'progression'.
-// The close button to return to the track view is in the TopBar.
-// ─────────────────────────────────────────────────────────────────────────────
+const START_OCTAVE = 3; // must match PianoKeyboard's START_OCTAVE
 
-const CELLS_PER_ROW = 8;
+const CELLS_PER_ROW = 4;
 
 function chunkRows(arr, size) {
   const rows = [];
-  for (let i = 0; i < arr.length; i += size) {
-    rows.push(arr.slice(i, i + size));
-  }
+  for (let i = 0; i < arr.length; i += size) rows.push(arr.slice(i, i + size));
   return rows;
 }
 
 export function ChordGrid() {
+  const t = useT();
   const { state, dispatch } = useAppState();
-  const { progressions, activeProgressionId, isPlaying, isPaused, playbackCursor, playbackActiveNotes, playbackNotesDuration, instrument, selectedCellChord } = state;
+  const { progressions, activeProgressionId, isPlaying, isPaused, playbackCursor, playbackActiveNotes, playbackNotesDuration, instrument, selectedCellChord, timeSig, globalPlayStyle, globalNoteValue, globalPatternLoop, bpm } = state;
+  // Per-progression pattern: fall back to global if not set on this progression
   const prog = progressions[activeProgressionId];
   const [transposeAmt, setTransposeAmt] = useState(0);
   const [selectedCellIndex, setSelectedCellIndex] = useState(null);
   const [autoPlay, setAutoPlay] = useState(true);
-  const [globalPlayStyle, setGlobalPlayStyle] = useState('block');
-  const [globalNoteValue, setGlobalNoteValue] = useState('4n');
-  const { playNotes } = useSampler();
+  const [showPiano, setShowPiano] = useState(true);
+  const [showGuitar, setShowGuitar] = useState(false);
+  // Shared manual highlight: Set<string> of "note+octave" keyIds (e.g. "C4")
+  // Piano highlights only the exact key; guitar derives pitch-class to highlight all frets.
+  const [sharedHighlight, setSharedHighlight] = useState(new Set());
+  // Help: dismissed manually OR automatically when any chord is assigned
+  const hasAnyChord = prog?.cells.some(c =>
+    c.chord || (c.split && c.subCells?.some(sc => sc?.root))
+  );
+  const [helpDismissed, setHelpDismissed] = useState(false);
+  const effectiveHelpVisible = !helpDismissed && !hasAnyChord;
+  const { playNotes, playArpeggio } = useSampler();
   const { updateLiveParams, updateLiveCells } = usePlayback();
+  // Scale animation: Set<"note+octave"> of notes currently lit during scale playback
+  const [playingScaleNotes, setPlayingScaleNotes] = useState(new Set());
+  const scaleTimersRef = useRef([]);
 
   // ── Drag-and-drop state ────────────────────────────────────
   // dragIndex: the global cell index currently being dragged (null = idle)
@@ -44,25 +56,36 @@ export function ChordGrid() {
   // dropIndex: insertion slot (0 = before first cell, n = after last cell)
   // null = not dragging / no valid drop target
   const [dropIndex, setDropIndex] = useState(null);
+  // Index of the cell currently targeted by a piano-chord drag
+  const [chordDropTarget, setChordDropTarget] = useState(null);
   // Whether Ctrl was held at drag-end (copy mode)
   const ctrlRef = useRef(false);
 
-  // Keep liveParams in sync with global toolbar settings
-  useEffect(() => {
-    updateLiveParams({ playStyle: globalPlayStyle, noteValue: globalNoteValue });
-  }, [globalPlayStyle, globalNoteValue, updateLiveParams]);
+  const progPlayStyle   = prog?.playStyle   ?? globalPlayStyle;
+  const progNoteValue   = prog?.noteValue   ?? globalNoteValue;
+  const progPatternLoop = prog?.patternLoop ?? globalPatternLoop;
 
-  // Push updated cells into the live playback engine when chords/cells change mid-play
+  // Keep liveParams in sync with this progression's pattern + time signature
+  useEffect(() => {
+    updateLiveParams({ playStyle: progPlayStyle, noteValue: progNoteValue, patternLoop: progPatternLoop });
+  }, [progPlayStyle, progNoteValue, progPatternLoop, updateLiveParams]);
+
+  useEffect(() => {
+    updateLiveParams({ timeSig });
+  }, [timeSig, updateLiveParams]);
+
+  // Push updated cells into the live playback engine when chords/cells change mid-play.
+  // Cells must carry _cellDuration so the engine uses the right duration on every loop pass.
   useEffect(() => {
     if ((isPlaying || isPaused) && prog?.cells) {
-      updateLiveCells(prog.cells);
+      updateLiveCells(prog.cells.map(cell => ({ ...cell, _cellDuration: prog.cellDuration ?? 'whole' })));
     }
-  }, [prog?.cells, isPlaying, isPaused, updateLiveCells]);
+  }, [prog?.cells, prog?.cellDuration, isPlaying, isPaused, updateLiveCells]);
 
   if (!prog) {
     return (
       <div className={styles.empty}>
-        <p>No progression selected. Create one to get started.</p>
+        <p>{t.noGridSelected}</p>
       </div>
     );
   }
@@ -72,8 +95,6 @@ export function ChordGrid() {
 
   const firstCell  = prog.cells.find(c => c.chord);
   const firstChord = firstCell?.chord ?? null;
-
-  const rows = chunkRows(prog.cells, CELLS_PER_ROW);
 
   function handleScaleChange({ root, key }) {
     dispatch({ type: 'SET_PROGRESSION_SCALE', progressionId: prog.id, root, key });
@@ -95,12 +116,83 @@ export function ChordGrid() {
 
   function handleCellSelect(cellIndex, chord) {
     setSelectedCellIndex(cellIndex);
+    setSharedHighlight(new Set()); // clear shared highlight on cell change
     dispatch({ type: 'SET_SELECTED_CELL_CHORD', chord: chord ?? null });
     if (chord && autoPlay) {
-      const notes = getChordNotesVoiced(chord.root, chord.typeKey, chord.octave ?? 4, chord.inversion ?? 0);
+      const notes = voiceChord(chord, chord.octave ?? 4);
       playNotes(notes, '2n', instrument);
     }
   }
+
+  function handleToggleKey(keyId) {
+    setSharedHighlight(prev => {
+      const next = new Set(prev);
+      next.has(keyId) ? next.delete(keyId) : next.add(keyId);
+      return next;
+    });
+  }
+
+  // ── Shared visualiser logic ────────────────────────────────
+  const scaleNoteSet = scaleRoot && scaleKey ? getScaleNoteSet(scaleRoot, scaleKey) : new Set();
+  const useFlat = preferFlat(scaleRoot, scaleKey);
+
+  function playScale() {
+    const indices = [...scaleNoteSet];
+    if (!indices.length) return;
+    // Sync the transport BPM so Tone.Time('8n') resolves to the correct duration
+    Tone.getTransport().bpm.value = bpm;
+    const rootIdx = scaleRoot ? noteIndex(scaleRoot) : [...indices].sort((a, b) => a - b)[0];
+    const sorted = [...indices].sort((a, b) => a - b);
+    const rootPos = sorted.indexOf(rootIdx);
+    const reordered = rootPos >= 0
+      ? [...sorted.slice(rootPos), ...sorted.slice(0, rootPos)]
+      : sorted;
+    const baseOct = START_OCTAVE + 1;
+    let oct = baseOct;
+    let prevIdx = -1;
+    const notes = reordered.map(i => {
+      if (prevIdx !== -1 && i <= prevIdx) oct++;
+      prevIdx = i;
+      return `${CHROMATIC[i]}${oct}`;
+    });
+    const rootOctaveUp = `${CHROMATIC[rootIdx]}${baseOct + 1}`;
+    const allNotes = [...notes, rootOctaveUp];
+    playArpeggio(allNotes, 'up', '8n', instrument);
+
+    scaleTimersRef.current.forEach(t => clearTimeout(t));
+    scaleTimersRef.current = [];
+    setPlayingScaleNotes(new Set());
+
+    const stepMs = Tone.Time('8n').toSeconds() * 1000;
+    const holdMs = stepMs * 0.85;
+    allNotes.forEach((noteWithOct, i) => {
+      const on  = setTimeout(() => setPlayingScaleNotes(prev => { const n = new Set(prev); n.add(noteWithOct);    return n; }), i * stepMs);
+      const off = setTimeout(() => setPlayingScaleNotes(prev => { const n = new Set(prev); n.delete(noteWithOct); return n; }), i * stepMs + holdMs);
+      scaleTimersRef.current.push(on, off);
+    });
+  }
+
+  function playHighlighted() {
+    if (!sharedHighlight.size) return;
+    playNotes([...sharedHighlight], '2n', instrument);
+  }
+
+  // Chord detection from shared highlight (pitch-class level)
+  const manualPitchClasses = [...sharedHighlight].map(id => noteIndex(id.replace(/\d+$/, '')));
+  const detectedChord = manualPitchClasses.length >= 2 ? identifyChord(manualPitchClasses, useFlat) : null;
+  const undeterminedDraggable = !detectedChord && manualPitchClasses.length >= 2
+    ? (() => {
+        const sorted = [...manualPitchClasses].sort((a, b) => a - b);
+        const root = CHROMATIC[sorted[0]];
+        const noteNames = sorted.map(i => displayNote(CHROMATIC[i], useFlat));
+        return { root, typeKey: null, customNotes: noteNames };
+      })()
+    : null;
+  const detectedLabel = detectedChord
+    ? `→ ${detectedChord.label}`
+    : manualPitchClasses.length >= 2
+      ? `→ ${[...manualPitchClasses].sort((a,b)=>a-b).map(i => displayNote(CHROMATIC[i], useFlat)).join(', ')} (${t.undefinedChord})`
+      : null;
 
   const pianoPlaybackNotes = (isPlaying || isPaused) ? (playbackActiveNotes.length ? playbackActiveNotes : (playbackCursor?.notes ?? null)) : null;
   const pianoSelectedChord = !isPlaying ? (selectedCellChord ?? firstChord) : null;
@@ -123,9 +215,15 @@ export function ChordGrid() {
   function handleDragOver(e, globalIdx) {
     e.preventDefault();
     e.stopPropagation();
+    // Piano chord drag — highlight destination cell, no insertion slot
+    if (e.dataTransfer.types.includes('application/chord')) {
+      if (chordDropTarget !== globalIdx) setChordDropTarget(globalIdx);
+      setDropIndex(null);
+      e.dataTransfer.dropEffect = 'copy';
+      return;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     const mid = rect.left + rect.width / 2;
-    // Insert before this cell if pointer is on left half, after if right half
     const slot = e.clientX < mid ? globalIdx : globalIdx + 1;
     if (slot !== dropIndex) setDropIndex(slot);
     e.dataTransfer.dropEffect = e.ctrlKey ? 'copy' : 'move';
@@ -135,6 +233,11 @@ export function ChordGrid() {
   function handleDragOverAfterLast(e) {
     e.preventDefault();
     e.stopPropagation();
+    if (e.dataTransfer.types.includes('application/chord')) {
+      setChordDropTarget(null);
+      setDropIndex(null);
+      return;
+    }
     const slot = prog.cells.length;
     if (slot !== dropIndex) setDropIndex(slot);
     e.dataTransfer.dropEffect = e.ctrlKey ? 'copy' : 'move';
@@ -143,6 +246,22 @@ export function ChordGrid() {
   function handleDrop(e, slot) {
     e.preventDefault();
     e.stopPropagation();
+    // Piano chord drop — set the chord on the target cell
+    const chordJson = e.dataTransfer.getData('application/chord');
+    if (chordJson) {
+      setChordDropTarget(null);
+      setDropIndex(null);
+      dragIndexRef.current = null;
+      try {
+        const chord = JSON.parse(chordJson);
+        // slot here is the cell index when called from cellWrapper's onDrop
+        const cellIdx = chordDropTarget ?? slot;
+        if (typeof cellIdx === 'number' && cellIdx < prog.cells.length) {
+          dispatch({ type: 'SET_CELL_CHORD', progressionId: prog.id, cellIndex: cellIdx, chord });
+        }
+      } catch { /* ignore malformed */ }
+      return;
+    }
     const from = dragIndexRef.current;
     const copy  = e.ctrlKey;
     dragIndexRef.current = null;
@@ -158,12 +277,20 @@ export function ChordGrid() {
   function handleDragEnd() {
     dragIndexRef.current = null;
     setDropIndex(null);
+    setChordDropTarget(null);
   }
 
   // ── Render ─────────────────────────────────────────────────
 
   return (
     <div className={styles.wrapper}>
+
+      {/* ── Close editor button ── */}
+      <button
+        className={styles.closeBtn}
+        title={t.closeEditor}
+        onClick={() => dispatch({ type: 'CLOSE_PROGRESSION_EDITOR' })}
+      >{t.closeEditor} →</button>
 
       {/* ── Top control panels ────────────────────────────── */}
       <div className={styles.panels}>
@@ -172,7 +299,7 @@ export function ChordGrid() {
         <div className={styles.panel}>
           <div className={styles.panelHeader}>
             <span className={styles.panelIcon}>♩</span>
-            <span className={styles.panelTitle}>Scale</span>
+            <span className={styles.panelTitle}>{t.scalePanel}</span>
           </div>
           <div className={styles.panelBody}>
             <ScaleSelector
@@ -183,16 +310,31 @@ export function ChordGrid() {
             />
             <div className={styles.divider} />
             <div className={styles.row}>
-              <span className={styles.smallLabel}>Transpose</span>
+              <span className={styles.smallLabel}>{t.cellDurationLabel}</span>
+              <select
+                className={styles.cellDurationSelect}
+                title={t.cellDurationTitle}
+                value={prog.cellDuration ?? 'whole'}
+                onChange={e => dispatch({ type: 'SET_CELL_DURATION', progressionId: prog.id, cellDuration: e.target.value })}
+              >
+                <option value="whole">{t.cellDurationWhole}</option>
+                <option value="half">{t.cellDurationHalf}</option>
+                <option value="quarter">{t.cellDurationQuarter}</option>
+                <option value="eighth">{t.cellDurationEighth}</option>
+              </select>
+            </div>
+            <div className={styles.divider} />
+            <div className={styles.row}>
+              <span className={styles.smallLabel}>{t.transpose}</span>
               <input
                 type="number"
                 className={styles.transposeInput}
                 value={transposeAmt}
                 onChange={e => setTransposeAmt(Number(e.target.value))}
                 min={-12} max={12}
+                title={t.transposeInputTitle}
               />
-              <span className={styles.smallLabel}>st</span>
-              <button className={styles.btn} onClick={handleTranspose}>Apply</button>
+              <button className={styles.btn} title={t.applyTransposeTitle} onClick={handleTranspose}>{t.applyBtn}</button>
             </div>
           </div>
         </div>
@@ -201,16 +343,22 @@ export function ChordGrid() {
         <div className={styles.panel}>
           <div className={styles.panelHeader}>
             <span className={styles.panelIcon}>♪</span>
-            <span className={styles.panelTitle}>Pattern</span>
-            <span className={styles.panelHint}>global default</span>
+            <span className={styles.panelTitle}>{t.patternPanel}</span>
+            <span className={styles.panelHint}>{t.patternGlobalHint}</span>
           </div>
           <div className={styles.panelBody}>
             <PatternControls
-              playStyle={globalPlayStyle}
-              noteValue={globalNoteValue}
-              onChange={({ playStyle, noteValue }) => {
-                if (playStyle !== null) setGlobalPlayStyle(playStyle);
-                setGlobalNoteValue(noteValue ?? globalNoteValue);
+              playStyle={progPlayStyle}
+              noteValue={progNoteValue}
+              patternLoop={progPatternLoop}
+              chord={firstChord}
+              onChange={({ playStyle, noteValue, patternLoop }) => {
+                dispatch({
+                  type: 'SET_GLOBAL_PATTERN',
+                  playStyle:   playStyle !== null ? playStyle : undefined,
+                  noteValue:   noteValue   ?? undefined,
+                  patternLoop: patternLoop ?? undefined,
+                });
               }}
             />
           </div>
@@ -218,28 +366,57 @@ export function ChordGrid() {
 
         {/* Grid meta */}
         <div className={styles.metaPanel}>
-          <span className={styles.cellCount}>
-            {prog.cells.length} cell{prog.cells.length !== 1 ? 's' : ''}
-          </span>
-          <label className={styles.autoPlayLabel}>
+          <span className={styles.cellCount}>{t.cellCount(prog.cells.length)}</span>
+          <label className={styles.autoPlayLabel} title={t.autoPlayTitle}>
             <input
               type="checkbox"
               checked={autoPlay}
               onChange={e => setAutoPlay(e.target.checked)}
             />
-            Auto-play
+            {t.autoPlay}
           </label>
+          {!hasAnyChord && (
+            <button
+              className={`${styles.helpToggleBtn} ${effectiveHelpVisible ? styles.helpToggleBtnActive : ''}`}
+              title={t.helpToggleTitle}
+              onClick={() => setHelpDismissed(p => !p)}
+            >
+              {effectiveHelpVisible ? t.hideHelp : t.showHelp}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* ── Grid rows ─────────────────────────────────────── */}
+      {/* ── Help screen ── */}
+      {effectiveHelpVisible && (
+        <div className={styles.helpScreen}>
+          <h3 className={styles.helpTitle}>{t.helpTitle}</h3>
+          <div className={styles.helpSteps}>
+            {[
+              [t.helpStep1Title, t.helpStep1Body],
+              [t.helpStep2Title, t.helpStep2Body],
+              [t.helpStep3Title, t.helpStep3Body],
+              [t.helpStep4Title, t.helpStep4Body],
+              [t.helpStep5Title, t.helpStep5Body],
+              [t.helpStep6Title, t.helpStep6Body],
+            ].map(([title, body]) => (
+              <div key={title} className={styles.helpStep}>
+                <strong className={styles.helpStepTitle}>{title}</strong>
+                <span className={styles.helpStepBody}>{body}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Grid rows — max 4 cells per row ─────────────────── */}
       <div
         className={styles.gridRows}
         onDragOver={e => e.preventDefault()}
         onDrop={e => { if (dropIndex !== null) handleDrop(e, dropIndex); }}
       >
-        {rows.map((row, rowIdx) => {
-          const isLastRow = rowIdx === rows.length - 1;
+        {chunkRows(prog.cells, CELLS_PER_ROW).map((row, rowIdx) => {
+          const isLastRow = rowIdx === Math.ceil(prog.cells.length / CELLS_PER_ROW) - 1;
           return (
             <div key={rowIdx} className={styles.rowGroup}>
               {row.map((cell, colIdx) => {
@@ -247,20 +424,16 @@ export function ChordGrid() {
                 const isSelected = selectedCellIndex === globalIdx;
                 const isDragging = dragIndexRef.current === globalIdx;
                 const showDropBefore = dropIndex === globalIdx;
-
+                const isChordDropTarget = chordDropTarget === globalIdx;
                 return (
                   <div key={cell.id} className={styles.cellOuter}>
-                    {/* Drop indicator line before this cell */}
-                    {showDropBefore && (
-                      <div className={styles.dropIndicator} />
-                    )}
-
+                    {showDropBefore && <div className={styles.dropIndicator} />}
                     <div
-                      className={`${styles.cellWrapper} ${isSelected ? styles.cellSelected : ''} ${isDragging ? styles.cellDragging : ''}`}
+                      className={`${styles.cellWrapper} ${isSelected ? styles.cellSelected : ''} ${isDragging ? styles.cellDragging : ''} ${isChordDropTarget ? styles.cellChordDrop : ''}`}
                       draggable
                       onDragStart={e => handleDragStart(e, globalIdx)}
                       onDragOver={e => handleDragOver(e, globalIdx)}
-                      onDrop={e => handleDrop(e, dropIndex ?? globalIdx)}
+                      onDrop={e => handleDrop(e, globalIdx)}
                       onDragEnd={handleDragEnd}
                       onClick={() => handleCellSelect(globalIdx, cell.chord)}
                     >
@@ -288,16 +461,16 @@ export function ChordGrid() {
                         onSetSubChord={(pid, ci, si, chord) =>
                           dispatch({ type: 'SET_SUB_CELL_CHORD', progressionId: pid, cellIndex: ci, subIndex: si, chord })
                         }
-                        onSetPlayStyle={(pid, ci, ps, nv) =>
-                          dispatch({ type: 'SET_CELL_PLAY_STYLE', progressionId: pid, cellIndex: ci, playStyle: ps, noteValue: nv })
+                        onSetPlayStyle={(pid, ci, ps, nv, pl) =>
+                          dispatch({ type: 'SET_CELL_PLAY_STYLE', progressionId: pid, cellIndex: ci, playStyle: ps, noteValue: nv, patternLoop: pl })
                         }
-                        onSetSubPlayStyle={(pid, ci, si, ps, nv) =>
-                          dispatch({ type: 'SET_SUB_CELL_PLAY_STYLE', progressionId: pid, cellIndex: ci, subIndex: si, playStyle: ps, noteValue: nv })
+                        onSetSubPlayStyle={(pid, ci, si, ps, nv, pl) =>
+                          dispatch({ type: 'SET_SUB_CELL_PLAY_STYLE', progressionId: pid, cellIndex: ci, subIndex: si, playStyle: ps, noteValue: nv, patternLoop: pl })
                         }
                       />
                       <button
                         className={styles.removeCell}
-                        title="Remove this cell"
+                        title={t.removeCellTitle}
                         disabled={prog.cells.length <= 1}
                         onClick={e => { e.stopPropagation(); removeCell(globalIdx); }}
                       >×</button>
@@ -306,7 +479,6 @@ export function ChordGrid() {
                 );
               })}
 
-              {/* Drop indicator after last cell in row */}
               {isLastRow && dropIndex === prog.cells.length && (
                 <div className={styles.dropIndicatorAfter} />
               )}
@@ -314,7 +486,7 @@ export function ChordGrid() {
               {isLastRow && (
                 <button
                   className={styles.addCell}
-                  title="Add a cell"
+                  title={t.addCellTitle}
                   onDragOver={handleDragOverAfterLast}
                   onDrop={e => handleDrop(e, prog.cells.length)}
                   onClick={addCell}
@@ -325,29 +497,96 @@ export function ChordGrid() {
         })}
       </div>
 
-      {/* ── Piano keyboard ────────────────────────────────── */}
-      <div className={styles.pianoSection}>
-        <h3 className={styles.sectionTitle}>Piano</h3>
-        <PianoKeyboard
-          scaleRoot={scaleRoot}
-          scaleKey={scaleKey}
-          selectedChord={pianoSelectedChord}
-          instrument={instrument}
-          playbackNotes={pianoPlaybackNotes}
-          playbackNotesDuration={playbackNotesDuration}
-          resetKey={selectedCellIndex}
-          onPickInversion={selectedCellIndex !== null ? (invIdx, clickedOctave) => {
-            const cell = prog.cells[selectedCellIndex];
-            if (!cell?.chord) return;
-            const def = CHORD_TYPES[cell.chord.typeKey];
-            const rootIdx = noteIndex(cell.chord.root);
-            const bassInterval = def ? def.intervals[invIdx] ?? 0 : 0;
-            const baseOctave = clickedOctave - Math.floor((rootIdx + bassInterval) / 12);
-            const updated = { ...cell.chord, inversion: invIdx, octave: baseOctave };
-            dispatch({ type: 'SET_CELL_CHORD', progressionId: prog.id, cellIndex: selectedCellIndex, chord: updated });
-            dispatch({ type: 'SET_SELECTED_CELL_CHORD', chord: updated });
-          } : undefined}
-        />
+      {/* ── Instrument visualisers ────────────────────────── */}
+      <div className={styles.visualiserSection}>
+
+        {/* Toggle + shared controls row */}
+        <div className={styles.visualiserHeader}>
+          <div className={styles.visualiserToggles}>
+            <button
+              className={`${styles.visualiserToggleBtn} ${showPiano ? styles.visualiserToggleActive : ''}`}
+              onClick={() => setShowPiano(p => !p)}
+            >{t.showPiano}</button>
+            <button
+              className={`${styles.visualiserToggleBtn} ${showGuitar ? styles.visualiserToggleActive : ''}`}
+              onClick={() => setShowGuitar(p => !p)}
+            >{t.showGuitar}</button>
+          </div>
+
+          {/* Shared action buttons — always visible when a visualiser is shown */}
+          {(showPiano || showGuitar) && (
+            <div className={styles.visualiserActions}>
+              {scaleNoteSet.size > 0 && (
+                <button className={styles.actionBtn} onClick={playScale}>{t.pianoPlayScale}</button>
+              )}
+              {sharedHighlight.size > 0 && (
+                <button className={styles.actionBtn} onClick={playHighlighted}>{t.pianoPlayHighlighted}</button>
+              )}
+              {sharedHighlight.size > 0 && (
+                <button className={styles.clearBtn} onClick={() => setSharedHighlight(new Set())}>{t.pianoClear}</button>
+              )}
+              {detectedLabel && (detectedChord || undeterminedDraggable) && (
+                <span
+                  className={`${styles.detectedChord} ${styles.detectedChordDraggable}`}
+                  draggable
+                  title={t.dragChordToCell}
+                  onDragStart={e => {
+                    const payload = detectedChord ?? undeterminedDraggable;
+                    e.dataTransfer.setData('application/chord', JSON.stringify(payload));
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                >{detectedLabel}</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {showPiano && (
+          <div className={styles.visualiserPanel}>
+            <PianoKeyboard
+              scaleRoot={scaleRoot}
+              scaleKey={scaleKey}
+              selectedChord={pianoSelectedChord}
+              instrument={instrument}
+              playbackNotes={pianoPlaybackNotes}
+              playbackNotesDuration={playbackNotesDuration}
+              isPaused={isPaused}
+              resetKey={selectedCellIndex}
+              manualHighlight={sharedHighlight}
+              onToggleKey={handleToggleKey}
+              playingScaleNotes={playingScaleNotes}
+              onPickInversion={selectedCellIndex !== null ? (invIdx, clickedOctave) => {
+                const cell = prog.cells[selectedCellIndex];
+                if (!cell?.chord) return;
+                const def = CHORD_TYPES[cell.chord.typeKey];
+                const rootIdx = noteIndex(cell.chord.root);
+                const bassInterval = def ? def.intervals[invIdx] ?? 0 : 0;
+                const baseOctave = clickedOctave - Math.floor((rootIdx + bassInterval) / 12);
+                const updated = { ...cell.chord, inversion: invIdx, octave: baseOctave };
+                dispatch({ type: 'SET_CELL_CHORD', progressionId: prog.id, cellIndex: selectedCellIndex, chord: updated });
+                dispatch({ type: 'SET_SELECTED_CELL_CHORD', chord: updated });
+              } : undefined}
+            />
+          </div>
+        )}
+
+        {showGuitar && (
+          <div className={styles.visualiserPanel}>
+            <GuitarFretboard
+              scaleRoot={scaleRoot}
+              scaleKey={scaleKey}
+              selectedChord={pianoSelectedChord}
+              instrument={instrument}
+              playbackNotes={pianoPlaybackNotes}
+              playbackNotesDuration={playbackNotesDuration}
+              isPaused={isPaused}
+              resetKey={selectedCellIndex}
+              manualHighlight={sharedHighlight}
+              onToggleKey={handleToggleKey}
+              playingScaleNotes={playingScaleNotes}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

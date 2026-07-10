@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { useAppState } from '../../state/AppContext';
+import { useT } from '../../i18n/index';
 import styles from './ProgressionManager.module.css';
 
-const TIME_SIGS = ['4/4', '3/4', '6/8', '2/4', '5/4', '7/8', '12/8'];
-const INSTRUMENTS = ['piano', 'synth', 'strings', 'pad', 'guitar'];
-
 export function ProgressionManager() {
+  const t = useT();
   const { state, dispatch } = useAppState();
-  const { progressions, progressionOrder, activeProgressionId, bpm, timeSig, instrument } = state;
+  const { progressions, progressionOrder, activeProgressionId } = state;
   const [newName, setNewName] = useState('');
   const [newSize, setNewSize] = useState(4);
 
@@ -20,58 +19,30 @@ export function ProgressionManager() {
 
   return (
     <div className={styles.panel}>
-      {/* Global settings */}
-      <section className={styles.section}>
-        <div className={styles.row}>
-          <label className={styles.label}>BPM</label>
-          <input
-            type="number"
-            className={styles.input}
-            value={bpm}
-            min={20} max={300}
-            onChange={e => dispatch({ type: 'SET_BPM', bpm: Number(e.target.value) })}
-          />
-          <label className={styles.label}>Time</label>
-          <select
-            className={styles.select}
-            value={timeSig}
-            onChange={e => dispatch({ type: 'SET_TIME_SIG', timeSig: e.target.value })}
-          >
-            {TIME_SIGS.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <label className={styles.label}>Instrument</label>
-          <select
-            className={styles.select}
-            value={instrument}
-            onChange={e => dispatch({ type: 'SET_INSTRUMENT', instrument: e.target.value })}
-          >
-            {INSTRUMENTS.map(i => <option key={i} value={i}>{i}</option>)}
-          </select>
-        </div>
-      </section>
-
-      {/* Create new progression */}
+      {/* Create new chord grid */}
       <section className={styles.section}>
         <div className={styles.row}>
           <input
             className={styles.input}
             list="progression-presets"
-            placeholder="Name or pick below…"
+            placeholder={t.newGridNamePlaceholder}
+            title={t.newGridNameTitle}
             value={newName}
             onChange={e => setNewName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && createProgression()}
           />
           <datalist id="progression-presets">
-            {['Intro', 'Verse', 'Pre-Chorus', 'Chorus', 'Bridge', 'Break', 'Drop', 'Outro'].map(n => (
+            {t.presetNames.map(n => (
               <option key={n} value={n} />
             ))}
           </datalist>
-          <label className={styles.label}>Cells</label>
+          <label className={styles.label}>{t.cellsLabel}</label>
           <input
             type="number"
             className={styles.input}
             value={newSize}
             min={1} max={32}
+            title={t.cellsInputTitle}
             onChange={e => setNewSize(Number(e.target.value))}
             style={{ width: 56 }}
           />
@@ -79,8 +50,8 @@ export function ProgressionManager() {
             className={styles.createBtn}
             onClick={createProgression}
             disabled={!newName.trim()}
-            title={!newName.trim() ? 'Enter a progression name first' : ''}
-          >+ New</button>
+            title={!newName.trim() ? t.newGridNameRequired : t.newGridBtn}
+          >{t.newGridBtn}</button>
         </div>
       </section>
 
@@ -97,6 +68,7 @@ export function ProgressionManager() {
               {p.name}
               <span
                 className={styles.del}
+                title={t.deleteGridTitle}
                 onClick={e => {
                   e.stopPropagation();
                   dispatch({ type: 'DELETE_PROGRESSION', id });

@@ -1,0 +1,190 @@
+.miniGrid {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  /* shrinks to content — no flex: 1 */
+}
+
+/* ── Meta row: scale badge */
+.metaRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scaleBadge {
+  font-size: 15px;
+  font-weight: 600;
+  color: #4f46e5;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 6px;
+  padding: 3px 9px;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.scaleBadgeEmpty {
+  font-size: 15px;
+  color: #9ca3af;
+}
+
+.durationBadge {
+  font-size: 16px;
+  color: #6b7280;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 2px 7px;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* ── Grid frame / table ───────────────────────────────────── */
+.gridFrame {
+  display: inline-flex;
+  align-items: flex-start;
+  margin-top: 6px;
+}
+
+.table {
+  display: inline-flex;   /* shrinks to fit cells, never stretches */
+  flex-direction: column;
+  border-left: 1px solid #d1d5db;
+  border-top: 1px solid #d1d5db;
+}
+
+.row {
+  display: flex;
+}
+
+/* ── Individual cell ─────────────────────────────────────── */
+.cell {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  border-right: 1px solid #d1d5db;
+  border-bottom: 1px solid #d1d5db;
+  padding: 3px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  transition: background 0.12s;
+  line-height: 1.1;
+}
+
+/* Step font down for longer labels so they fit in the square */
+.cell[data-len="4"] { font-size: 16px; }
+.cell[data-len="5"] { font-size: 15px; }
+.cell[data-len="6"],
+.cell[data-len="7"] { font-size: 13px; }
+
+.cell.empty {
+  color: #d1d5db;
+}
+
+.cell.clickable {
+  cursor: pointer;
+}
+
+.cell.clickable:hover {
+  background: #f0f4ff;
+}
+
+.cell.active {
+  background: #fde047;
+  color: #713f12;
+  z-index: 1;
+}
+
+.bass {
+  font-weight: 400;
+  font-size: 13px;
+  opacity: 0.75;
+  margin-left: 2px;
+}
+
+/* ── Split cell ──────────────────────────────────────────── */
+.splitCell {
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Top-left corner — first sub-chord */
+.splitTop {
+  position: absolute;
+  top: 5px;
+  left: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.1;
+  z-index: 1;
+  pointer-events: auto;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 2px 3px;
+}
+
+.splitTop:hover {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+/* Bottom-right corner — second sub-chord */
+.splitBottom {
+  position: absolute;
+  bottom: 5px;
+  right: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.1;
+  z-index: 1;
+  pointer-events: auto;
+  text-align: right;
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 2px 3px;
+}
+
+.splitBottom:hover {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+/* Step split labels down when labels are long */
+.splitCell[data-len="4"] .splitTop,
+.splitCell[data-len="4"] .splitBottom { font-size: 15px; }
+.splitCell[data-len="5"] .splitTop,
+.splitCell[data-len="5"] .splitBottom { font-size: 13px; }
+.splitCell[data-len="6"] .splitTop,
+.splitCell[data-len="6"] .splitBottom,
+.splitCell[data-len="7"] .splitTop,
+.splitCell[data-len="7"] .splitBottom { font-size: 12px; }
+
+.diagonal {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.diagonal line {
+  stroke: #9ca3af;
+  stroke-width: 1px;
+}
+
+/* Active split cell darkens the diagonal */
+.splitCell.active .diagonal line {
+  stroke: #a16207;
+}

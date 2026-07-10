@@ -17,6 +17,12 @@
   min-height: 0;
 }
 
+/* Track view specifically needs its child to scroll, not the layer itself */
+.viewLayer > * {
+  flex: 1;
+  min-height: 0;
+}
+
 .hidden {
   display: none;
 }

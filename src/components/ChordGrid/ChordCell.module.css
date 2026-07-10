@@ -26,7 +26,7 @@
   display: flex;
   flex-direction: column;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
   gap: 0;
 }
 
@@ -35,6 +35,7 @@
   flex-direction: row;
   flex: 1;
   width: 100%;
+  overflow: visible;
 }
 
 .subCell {
@@ -46,8 +47,10 @@
   padding: 6px 4px;
   border-right: 1px dashed #d1d5db;
   min-width: 0;
+  overflow: visible;
 }
-.subCell:last-child { border-right: none; }
+.subCell:first-child { border-radius: 7px 0 0 7px; }
+.subCell:last-child  { border-right: none; border-radius: 0 7px 7px 0; }
 
 /* Footer row inside non-split cells */
 .cellFooter {
@@ -72,10 +75,27 @@
 }
 
 /* ─── Labels ─────────────────────────────────────────────── */
+.labelWrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
 .label {
   font-size: 14px;
   font-weight: 700;
   color: #1f2937;
+}
+
+.labelClickable {
+  cursor: pointer;
+  border-bottom: 1.5px dashed #9ca3af;
+  padding-bottom: 1px;
+}
+.labelClickable:hover {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
 }
 
 .empty {
@@ -83,28 +103,138 @@
   color: #9ca3af;
   cursor: pointer;
 }
+.empty:hover { color: #3b82f6; }
 
-/* ─── Selects ────────────────────────────────────────────── */
-.chordSelect {
-  font-size: 11px;
-  padding: 2px 4px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
+/* ─── Custom chord dropdown ──────────────────────────────── */
+.chordDropdown {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
   background: #fff;
-  cursor: pointer;
-  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  max-height: 220px;
+  overflow-y: auto;
+  min-width: 160px;
+  width: max-content;
 }
 
-.miniSelect {
+.chordDropdownOption {
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+.chordDropdownOption:hover {
+  filter: brightness(0.93);
+}
+
+.chordDropdownSelected {
+  font-weight: 700;
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
+}
+
+/* ─── Notes row (label + inversion buttons + octave) ────────── */
+.notesRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  width: 100%;
+  justify-content: center;
+}
+
+.notesLabel {
+  font-size: 9px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.octaveLabel {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: default;
+  flex-shrink: 0;
+}
+
+.octaveInput {
+  width: 32px;
   font-size: 10px;
   padding: 1px 3px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  background: #f9fafb;
+  text-align: center;
+  color: #374151;
+}
+.octaveInput:focus { outline: 1px solid #3b82f6; }
+
+
+/* ─── Inversion row ──────────────────────────────────────── */
+.inversionRow {
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.inversionBtn {
+  font-size: 10px;
+  padding: 1px 5px;
+  border: 1px solid #d1d5db;
   border-radius: 3px;
   background: #f9fafb;
   cursor: pointer;
-  width: 100%;
   color: #6b7280;
+  line-height: 1.4;
 }
+.inversionBtn:hover { background: #e5e7eb; color: #1f2937; }
+
+.inversionBtnActive {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+.inversionBtnActive:hover { background: #bfdbfe; }
+
+/* Inversion toggle button — opens the NotesRow panel */
+.inversionToggleBtn {
+  font-size: 13px;
+  line-height: 1;
+  padding: 1px 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.inversionToggleBtn:hover { color: #6b7280; background: #f3f4f6; }
+
+.inversionToggleBtnActive {
+  color: #1d4ed8;
+  border-color: #3b82f6;
+  background: #dbeafe;
+}
+.inversionToggleBtnActive:hover { background: #bfdbfe; }
 
 /* ─── Buttons ────────────────────────────────────────────── */
 .splitBtn, .unsplitBtn {

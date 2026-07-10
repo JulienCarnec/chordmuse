@@ -1,8 +1,10 @@
 import { CHROMATIC } from '../../theory/notes';
 import { SCALE_DEFINITIONS, getScaleNotes, scalesFittingFirstChord } from '../../theory/scales';
+import { useT } from '../../i18n/index';
 import styles from './ScaleSelector.module.css';
 
 export function ScaleSelector({ scaleRoot, scaleKey, firstChord, onChange }) {
+  const t = useT();
   // Fully controlled — no internal state. Empty string means "no scale selected".
 
   const fits = firstChord
@@ -20,13 +22,14 @@ export function ScaleSelector({ scaleRoot, scaleKey, firstChord, onChange }) {
 
   return (
     <div className={styles.container}>
-      <label className={styles.label}>Scale</label>
+      <label className={styles.label}>{t.scaleLabel}</label>
       <select
         className={styles.select}
         value={scaleRoot ?? ''}
+        title={t.scaleRootTitle}
         onChange={e => handleRootChange(e.target.value)}
       >
-        <option value="">— root —</option>
+        <option value="">{t.scaleRootPlaceholder}</option>
         {CHROMATIC.map(r => (
           <option key={r} value={r}>{r}</option>
         ))}
@@ -34,16 +37,17 @@ export function ScaleSelector({ scaleRoot, scaleKey, firstChord, onChange }) {
       <select
         className={styles.select}
         value={scaleKey ?? ''}
+        title={t.scaleModeTitle}
         onChange={e => handleKeyChange(e.target.value)}
       >
-        <option value="">— mode —</option>
-        {Object.entries(SCALE_DEFINITIONS).map(([k, def]) => (
+        <option value="">{t.scaleModePlaceholder}</option>
+        {Object.entries(SCALE_DEFINITIONS).map(([k]) => (
           <option
             key={k}
             value={k}
             style={fits[k] ? { backgroundColor: '#22c55e', color: '#fff' } : {}}
           >
-            {def.name}
+            {t.scaleNames?.[k] ?? k}
           </option>
         ))}
       </select>

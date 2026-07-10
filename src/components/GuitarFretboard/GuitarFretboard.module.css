@@ -1,0 +1,127 @@
+.wrapper {
+  user-select: none;
+  padding: 8px 0 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tuningRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.tuningLabel {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.tuningSelect {
+  padding: 2px 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  font-size: 12px;
+  background: #f9fafb;
+  color: #374151;
+  cursor: pointer;
+}
+.tuningSelect:focus { outline: none; border-color: #3b82f6; }
+
+.fretboard {
+  position: relative;
+  width: 100%;
+}
+
+/* SVG neck layer */
+.neckSvg {
+  display: block;
+  pointer-events: none;
+}
+
+/* Hit-area + dot layer — positioned absolutely over the SVG */
+.dotLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+/* Each dot hit area is a small invisible square centered on the fret position */
+.dotHitArea {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: all;
+  cursor: pointer;
+  border-radius: 50%;
+}
+.dotHitArea:hover .dot {
+  filter: brightness(1.15);
+}
+
+/* ── Base dot ────────────────────────────────────────────────── */
+.dot {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  /* default: hidden (no background) */
+  background: transparent;
+}
+
+.dotLabel {
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  pointer-events: none;
+  line-height: 1;
+  text-align: center;
+}
+
+/* ── Highlight states — mirror PianoKeyboard colour system ─────
+   Priority: attack > sustain > manual > scalePlaying > scale    */
+
+/* Scale note — green circle (same as piano scaleLabel) */
+.dotScale {
+  background: #16a34a;
+}
+.dotScale .dotLabel { color: #fff; }
+
+/* Scale note currently being played in the scale animation — light green */
+.dotScalePlaying {
+  background: #86efac;
+}
+.dotScalePlaying .dotLabel { color: #14532d; }
+
+/* Manual highlight — blue (same as piano bg_highlight) */
+.dotManual {
+  background: #3b82f6;
+}
+.dotManual .dotLabel { color: #fff; }
+
+/* Attack flash — orange (same as piano attackFlash start) */
+@keyframes dotAttackFlash {
+  0%   { background: #f97316; }
+  100% { background: #fde047; }
+}
+.dotAttack {
+  animation: dotAttackFlash 0.2s ease-out forwards;
+}
+.dotAttack .dotLabel { color: #1f2937; }
+
+/* Sustain — yellow (same as piano bg_sustain) */
+.dotSustain {
+  background: #fde047;
+  border: 1.5px solid #ca8a04;
+}
+.dotSustain .dotLabel { color: #1f2937; }
+
+/* Dimmed — almost invisible grey dot for out-of-scale notes when scale is active */
+.dotDimmed {
+  background: rgba(156, 163, 175, 0.18);
+}
+.dotDimmed .dotLabel { color: rgba(156, 163, 175, 0.5); }
