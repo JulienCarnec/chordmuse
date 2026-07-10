@@ -3,6 +3,7 @@ import { useAppState } from '../../state/AppContext';
 import { PianoKeyboard } from '../PianoKeyboard/PianoKeyboard';
 import { GuitarFretboard } from '../GuitarFretboard/GuitarFretboard';
 import { ProgressionMiniGrid } from './ProgressionMiniGrid';
+import { DrumSequencer } from '../DrumSequencer/DrumSequencer';
 import { voiceChord } from '../../theory/chords';
 import { useSampler } from '../../audio/useSampler';
 import { usePlayback } from '../Playback/usePlayback';
@@ -15,7 +16,7 @@ const PREVIEW_DURATION_MS = 1800;
 export function TrackEditor() {
   const t = useT();
   const { state, dispatch } = useAppState();
-  const { seekTo } = usePlayback();
+  const { seekTo, updateLiveDrumSchedule } = usePlayback();
   const { playNotes } = useSampler();
   const {
     track, progressions, progressionOrder,
@@ -51,9 +52,11 @@ export function TrackEditor() {
     }
   }, [isPlaying, isPaused, seekTo]);
 
-  // ── Create progression form ──────────────────────────────────
+  // ── Create progression dialog ────────────────────────────────
+  const [showNewGridDialog, setShowNewGridDialog] = useState(false);
   const [newName, setNewName] = useState('');
   const [newSize, setNewSize] = useState(4);
+  const [newCellDuration, setNewCellDuration] = useState('whole');
 
   // ── Delete confirmation ──────────────────────────────────────
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -65,6 +68,9 @@ export function TrackEditor() {
   // ── Visualiser visibility ────────────────────────────────────
   const [showPiano, setShowPiano] = useState(true);
   const [showGuitar, setShowGuitar] = useState(false);
+
+  // ── Drum sequencer panel ─────────────────────────────────────
+  const [drumOpen, setDrumOpen] = useState(false);
 
   // ── Collapsed track items ────────────────────────────────────
   const [collapsedItems, setCollapsedItems] = useState(new Set());
@@ -96,10 +102,18 @@ export function TrackEditor() {
   const dragIndexRef = useRef(null);
   const [dropIndex, setDropIndex] = useState(null);
 
+  function openNewGridDialog() {
+    setNewName('');
+    setNewSize(4);
+    setNewCellDuration('whole');
+    setShowNewGridDialog(true);
+  }
+
   function createProgression() {
     if (!newName.trim()) return;
     const id = `prog-${Date.now()}`;
-    dispatch({ type: 'CREATE_PROGRESSION', id, name: newName.trim(), size: newSize });
+    dispatch({ type: 'CREATE_PROGRESSION', id, name: newName.trim(), size: newSize, cellDuration: newCellDuration });
+    setShowNewGridDialog(false);
     setNewName('');
   }
 
@@ -170,6 +184,9 @@ export function TrackEditor() {
   return (
     <div className={styles.wrapper}>
 
+      {/* ── Main content column ─────────────────────────────── */}
+      <div className={styles.mainCol}>
+
       {/* ── Delete confirmation dialog ─────────────────────── */}
       {confirmDeleteId && (
         <div className={styles.dialogOverlay}>
@@ -218,37 +235,6 @@ export function TrackEditor() {
             <h3 className={styles.subTitle}>{t.progressions}</h3>
           </div>
 
-          {/* Create new */}
-          <div className={styles.createRow}>
-            <input
-              className={styles.createInput}
-              list="progression-presets"
-              placeholder={t.trackNamePlaceholder}
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && createProgression()}
-            />
-            <datalist id="progression-presets">
-              {t.presetNames.map(n => (
-                <option key={n} value={n} />
-              ))}
-            </datalist>
-            <input
-              type="number"
-              className={styles.sizeInput}
-              value={newSize}
-              min={1} max={32}
-              title={t.numberOfCellsTitle}
-              onChange={e => setNewSize(Number(e.target.value))}
-            />
-            <button
-              className={styles.createBtn}
-              onClick={createProgression}
-              disabled={!newName.trim()}
-              title={t.newProgBtnTitle}
-            >{t.newProgBtn}</button>
-          </div>
-
           {/* Progression cards */}
           {!progressionOrder.length && (
             <p className={styles.hint}>{t.addProgressionHint}</p>
@@ -286,6 +272,11 @@ export function TrackEditor() {
                   onClick={() => addToTrack(id)}
                 >{t.addToTrackBtn}</button>
                 <button
+                  className={styles.duplicateProgBtn}
+                  title={t.duplicateProgTitle}
+                  onClick={() => dispatch({ type: 'DUPLICATE_PROGRESSION', id })}
+                >⧉</button>
+                <button
                   className={styles.deleteProgBtn}
                   title={t.deleteProgTitle}
                   onClick={() => requestDelete(id)}
@@ -293,7 +284,71 @@ export function TrackEditor() {
               </div>
             </div>
           ))}
+
+          {/* New Grid button */}
+          <div className={styles.newGridBtnRow}>
+            <button className={styles.newGridFloatBtn} onClick={openNewGridDialog}>
+              + {t.newGridLabel}
+            </button>
+          </div>
         </div>
+
+        {/* New Grid dialog */}
+        {showNewGridDialog && (
+          <div className={styles.dialogOverlay} onClick={() => setShowNewGridDialog(false)}>
+            <div className={styles.newGridDialog} onClick={e => e.stopPropagation()}>
+              <h3 className={styles.newGridDialogTitle}>{t.newGridDialogTitle}</h3>
+
+              <label className={styles.newGridDialogLabel}>{t.newGridNameLabel}</label>
+              <input
+                className={styles.newGridDialogInput}
+                list="progression-presets"
+                placeholder={t.newGridNamePlaceholder}
+                value={newName}
+                autoFocus
+                onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && createProgression()}
+              />
+              <datalist id="progression-presets">
+                {t.presetNames.map(n => <option key={n} value={n} />)}
+              </datalist>
+
+              <label className={styles.newGridDialogLabel}>{t.newGridSizeLabel}</label>
+              <input
+                type="number"
+                className={styles.newGridDialogInput}
+                value={newSize}
+                min={1} max={32}
+                onChange={e => setNewSize(Number(e.target.value))}
+              />
+
+              <label className={styles.newGridDialogLabel}>{t.cellDurationLabel}</label>
+              <select
+                className={styles.newGridDialogInput}
+                value={newCellDuration}
+                onChange={e => setNewCellDuration(e.target.value)}
+              >
+                <option value="whole">{t.cellDurationWhole}</option>
+                <option value="half">{t.cellDurationHalf}</option>
+                <option value="quarter">{t.cellDurationQuarter}</option>
+                <option value="eighth">{t.cellDurationEighth}</option>
+              </select>
+
+              <div className={styles.newGridDialogActions}>
+                <button className={styles.dialogCancel} onClick={() => setShowNewGridDialog(false)}>
+                  {t.cancelBtn}
+                </button>
+                <button
+                  className={styles.createBtn}
+                  onClick={createProgression}
+                  disabled={!newName.trim()}
+                >
+                  {t.newProgBtn}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Right: arrangement */}
         <div
@@ -308,8 +363,9 @@ export function TrackEditor() {
           {!track.length && (
             <p className={styles.hint}>{t.addArrangementHint}</p>
           )}
-          {track.map(({ progressionId, repetitions }, idx) => {
+          {track.map(({ progressionId, repetitions, drumPatternId }, idx) => {
             const prog = progressions[progressionId];
+            const assignedDrum = drumPatternId ? state.drumPatterns[drumPatternId] : null;
             const isDragging = dragIndexRef.current === idx;
             const isCollapsed = collapsedItems.has(idx);
             return (
@@ -330,6 +386,20 @@ export function TrackEditor() {
                       onClick={() => handleTileClick(idx)}
                     >
                       <span className={styles.trackName}>{prog?.name ?? '?'}</span>
+                      {assignedDrum && (
+                        <span className={styles.drumBadge} title={t.drumBadgeTitle(assignedDrum.name)}>
+                          🥁 {assignedDrum.name}
+                          <button
+                            className={styles.drumBadgeRemove}
+                            title={t.drumBadgeRemoveTitle}
+                            onClick={e => {
+                              e.stopPropagation();
+                              dispatch({ type: 'SET_TRACK_DRUM_PATTERN', index: idx, drumPatternId: null });
+                              updateLiveDrumSchedule(idx, null);
+                            }}
+                          >×</button>
+                        </span>
+                      )}
                       <button
                         className={styles.collapseBtn}
                         title={isCollapsed ? t.expandItem : t.collapseItem}
@@ -381,6 +451,7 @@ export function TrackEditor() {
             {dropIndex === track.length && <div className={styles.dropIndicator} />}
           </div>
         </div>
+
       </div>
 
       {/* ── Visualiser section ─────────────────────────────── */}
@@ -394,6 +465,11 @@ export function TrackEditor() {
             className={`${styles.visualiserToggleBtn} ${showGuitar ? styles.visualiserToggleActive : ''}`}
             onClick={() => setShowGuitar(p => !p)}
           >{t.showGuitar}</button>
+          <button
+            className={`${styles.visualiserToggleBtn} ${drumOpen ? styles.visualiserToggleActive : ''}`}
+            onClick={() => setDrumOpen(p => !p)}
+            title={drumOpen ? t.drumSeqCollapse : t.drumSeqExpand}
+          >🥁 {t.drumSeqTitle}</button>
         </div>
         {showPiano && (
           <PianoKeyboard
@@ -418,6 +494,14 @@ export function TrackEditor() {
           />
         )}
       </div>
+
+      </div>{/* end .mainCol */}
+
+      {/* ── Drum sequencer: right edge of the outer row ────── */}
+      <DrumSequencer
+        open={drumOpen}
+        onToggle={() => setDrumOpen(p => !p)}
+      />
     </div>
   );
 }

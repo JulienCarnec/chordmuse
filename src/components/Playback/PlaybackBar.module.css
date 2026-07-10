@@ -106,3 +106,19 @@
   align-items: flex-end;
   gap: 12px;
 }
+
+/* ─── Drum controls (hi-hat cadence + bass pattern) ──────── */
+.drumControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drumLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #9ca3af;
+  white-space: nowrap;
+}

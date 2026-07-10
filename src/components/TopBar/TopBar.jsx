@@ -41,7 +41,7 @@ export function TopBar({ onLoad }) {
   const t = useT();
   const { toggleLocale } = useLocale();
   const { state, dispatch } = useAppState();
-  const { play, stop, pause, resume, updateLiveParams, updateLiveInstrument, reschedule } = usePlayback();
+  const { play, stop, pause, resume, updateLiveParams, updateLiveInstrument, reschedule, updateDrumRows } = usePlayback();
   const { setReverbWet } = useSampler();
   const fileRef = useRef();
   const [humanize,    setHumanize]    = useState(50);
@@ -51,10 +51,18 @@ export function TopBar({ onLoad }) {
   // Keep liveParams in sync with knobs at all times (including on first render).
   const {
     activeView, isPlaying, isPaused,
-    bpm, timeSig, instrument, groove, metronome,
+    bpm, timeSig, instrument, groove,
+    autoPlay,
+    metronome,
     progressions, activeProgressionId,
+    drumPatterns, activeDrumPatternId,
     track,
   } = state;
+
+  // Active drum rows — passed to play() when drum sequencer is globally enabled
+  const activeDrumRows = metronome.drumEnabled && activeDrumPatternId && drumPatterns[activeDrumPatternId]
+    ? drumPatterns[activeDrumPatternId].rows
+    : null;
 
   useEffect(() => {
     updateLiveParams({ humanize: humanize / 100 });
@@ -100,7 +108,7 @@ export function TopBar({ onLoad }) {
         progressionId: prog.id,
         bpm, timeSig, instrument,
         humanize: humanize / 100,
-        metronome,
+        drumRows: activeDrumRows,
         loop: true,
         playStyle:   progPlayStyle,
         noteValue:   progNoteValue,
@@ -112,14 +120,46 @@ export function TopBar({ onLoad }) {
       // so the cursor highlights only the correct mini-grid row and cell.
       const allCells = [];
       let firstProgId = null;
-      track.forEach(({ progressionId, repetitions }, trackIdx) => {
+
+      // Bar duration in seconds (needed to compute per-section time offsets)
+      const [beatsPerBar, beatUnit] = timeSig.split('/').map(Number);
+      const barDurSec = Tone.Time(`${beatUnit}n`).toSeconds() * beatsPerBar;
+      const CELL_DUR_FACTOR = { whole: 1, half: 0.5, quarter: 0.25, eighth: 0.125 };
+
+      // Build drumSchedule: one entry per track item start time.
+      // Each entry carries the rows to activate (section-assigned pattern,
+      // falling back to the global active pattern when drum is enabled, or null).
+      const drumSchedule = [];
+      let sectionTimeSec = 0;
+
+      track.forEach(({ progressionId, repetitions, drumPatternId }, trackIdx) => {
         const prog = progressions[progressionId];
         if (!prog) return;
         if (!firstProgId) firstProgId = prog.id;
+
         // Resolve per-progression pattern for each cell
         const progPlayStyle   = prog.playStyle   ?? state.globalPlayStyle;
         const progNoteValue   = prog.noteValue   ?? state.globalNoteValue;
         const progPatternLoop = prog.patternLoop ?? state.globalPatternLoop;
+
+        // Determine drum rows for this section:
+        // 1. Section-assigned pattern (always used if set, regardless of drumEnabled)
+        // 2. Global active pattern (only when drumEnabled is on)
+        // 3. null (silence)
+        let sectionRows = null;
+        if (drumPatternId && drumPatterns[drumPatternId]) {
+          sectionRows = drumPatterns[drumPatternId].rows;
+        } else if (activeDrumRows) {
+          sectionRows = activeDrumRows;
+        }
+        drumSchedule.push({ timeSec: sectionTimeSec, rows: sectionRows });
+
+        // Compute total duration of this track item (repetitions × all cells)
+        const cellFactor = CELL_DUR_FACTOR[prog.cellDuration ?? 'whole'] ?? 1;
+        const cellDurSec = barDurSec * cellFactor;
+        const itemDurSec = prog.cells.length * cellDurSec * repetitions;
+        sectionTimeSec += itemDurSec;
+
         for (let r = 0; r < repetitions; r++) {
           prog.cells.forEach((cell, localIdx) => {
             allCells.push({
@@ -136,13 +176,19 @@ export function TopBar({ onLoad }) {
           });
         }
       });
+
       if (!allCells.length) return;
+
+      // Only pass a drumSchedule when at least one section has drum rows.
+      const hasAnyDrum = drumSchedule.some(e => e.rows !== null);
+
       play({
         cells: allCells,
         progressionId: firstProgId,
         bpm, timeSig, instrument,
         humanize: humanize / 100,
-        metronome,
+        drumRows: hasAnyDrum ? (drumSchedule[0]?.rows ?? null) : null,
+        drumSchedule: hasAnyDrum ? drumSchedule : undefined,
         loop: false,
       });
     }
@@ -237,6 +283,13 @@ export function TopBar({ onLoad }) {
           ))}
         </select>
 
+        {/* Auto-play toggle */}
+        <button
+          className={`${styles.autoPlayBtn} ${autoPlay ? styles.autoPlayBtnOn : ''}`}
+          title={t.autoPlayTitle}
+          onClick={() => dispatch({ type: 'SET_AUTO_PLAY', autoPlay: !autoPlay })}
+        >▶ {t.autoPlay}</button>
+
         {/* Knobs: Humanize · Velocity · Reverb */}
         <div className={styles.knobsGroup}>
           <Knob
@@ -260,26 +313,6 @@ export function TopBar({ onLoad }) {
           />
         </div>
 
-        {/* Metronome */}
-        <label className={styles.metLabel} title={t.metroTitle}>
-          <input
-            type="checkbox"
-            checked={metronome.enabled}
-            onChange={e => dispatch({ type: 'SET_METRONOME', payload: { enabled: e.target.checked } })}
-          />
-          {t.metro}
-        </label>
-        {metronome.enabled && (
-          <select
-            className={styles.metSelect}
-            title={t.metroModeTitle}
-            value={metronome.mode}
-            onChange={e => dispatch({ type: 'SET_METRONOME', payload: { mode: e.target.value } })}
-          >
-            <option value="click">{t.metroClick}</option>
-            <option value="drum">{t.metroDrum}</option>
-          </select>
-        )}
       </div>
 
       {/* Right: file actions + language toggle + close button */}

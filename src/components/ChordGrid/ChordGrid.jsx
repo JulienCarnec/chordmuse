@@ -6,6 +6,7 @@ import { PatternControls } from './PatternControls';
 import { ScaleSelector } from '../ScaleSelector/ScaleSelector';
 import { PianoKeyboard } from '../PianoKeyboard/PianoKeyboard';
 import { GuitarFretboard } from '../GuitarFretboard/GuitarFretboard';
+import { DrumSequencer } from '../DrumSequencer/DrumSequencer';
 import { useSampler } from '../../audio/useSampler';
 import { usePlayback } from '../Playback/usePlayback';
 import { getChordNotesVoiced, voiceChord, CHORD_TYPES, identifyChord } from '../../theory/chords';
@@ -27,14 +28,14 @@ function chunkRows(arr, size) {
 export function ChordGrid() {
   const t = useT();
   const { state, dispatch } = useAppState();
-  const { progressions, activeProgressionId, isPlaying, isPaused, playbackCursor, playbackActiveNotes, playbackNotesDuration, instrument, selectedCellChord, timeSig, globalPlayStyle, globalNoteValue, globalPatternLoop, bpm } = state;
+  const { progressions, activeProgressionId, isPlaying, isPaused, playbackCursor, playbackActiveNotes, playbackNotesDuration, instrument, selectedCellChord, timeSig, globalPlayStyle, globalNoteValue, globalPatternLoop, bpm, autoPlay } = state;
   // Per-progression pattern: fall back to global if not set on this progression
   const prog = progressions[activeProgressionId];
   const [transposeAmt, setTransposeAmt] = useState(0);
   const [selectedCellIndex, setSelectedCellIndex] = useState(null);
-  const [autoPlay, setAutoPlay] = useState(true);
   const [showPiano, setShowPiano] = useState(true);
   const [showGuitar, setShowGuitar] = useState(false);
+  const [drumOpen, setDrumOpen] = useState(false);
   // Shared manual highlight: Set<string> of "note+octave" keyIds (e.g. "C4")
   // Piano highlights only the exact key; guitar derives pitch-class to highlight all frets.
   const [sharedHighlight, setSharedHighlight] = useState(new Set());
@@ -285,12 +286,18 @@ export function ChordGrid() {
   return (
     <div className={styles.wrapper}>
 
-      {/* ── Close editor button ── */}
-      <button
-        className={styles.closeBtn}
-        title={t.closeEditor}
-        onClick={() => dispatch({ type: 'CLOSE_PROGRESSION_EDITOR' })}
-      >{t.closeEditor} →</button>
+      {/* ── Main content column ─────────────────────────────── */}
+      <div className={styles.mainCol}>
+
+      {/* ── Editor header: progression name + close button ── */}
+      <div className={styles.editorHeader}>
+        <span className={styles.editorTitle}>{prog.name}</span>
+        <button
+          className={styles.closeBtn}
+          title={t.closeEditor}
+          onClick={() => dispatch({ type: 'CLOSE_PROGRESSION_EDITOR' })}
+        >{t.closeEditor} →</button>
+      </div>
 
       {/* ── Top control panels ────────────────────────────── */}
       <div className={styles.panels}>
@@ -364,27 +371,6 @@ export function ChordGrid() {
           </div>
         </div>
 
-        {/* Grid meta */}
-        <div className={styles.metaPanel}>
-          <span className={styles.cellCount}>{t.cellCount(prog.cells.length)}</span>
-          <label className={styles.autoPlayLabel} title={t.autoPlayTitle}>
-            <input
-              type="checkbox"
-              checked={autoPlay}
-              onChange={e => setAutoPlay(e.target.checked)}
-            />
-            {t.autoPlay}
-          </label>
-          {!hasAnyChord && (
-            <button
-              className={`${styles.helpToggleBtn} ${effectiveHelpVisible ? styles.helpToggleBtnActive : ''}`}
-              title={t.helpToggleTitle}
-              onClick={() => setHelpDismissed(p => !p)}
-            >
-              {effectiveHelpVisible ? t.hideHelp : t.showHelp}
-            </button>
-          )}
-        </div>
       </div>
 
       {/* ── Help screen ── */}
@@ -588,6 +574,14 @@ export function ChordGrid() {
           </div>
         )}
       </div>
+
+      </div>{/* end .mainCol */}
+
+      {/* ── Drum sequencer: right edge of the outer row ─────── */}
+      <DrumSequencer
+        open={drumOpen}
+        onToggle={() => setDrumOpen(p => !p)}
+      />
     </div>
   );
 }

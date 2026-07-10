@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import * as Tone from 'tone';
 import { useAppState } from '../../state/AppContext';
 import { useSampler, stopAllSynths } from '../../audio/useSampler';
+import { useDrumSequencer } from '../../audio/useDrumSequencer';
 import { voiceChord } from '../../theory/chords';
 import { buildEventsFromPattern } from '../../theory/pattern';
 
@@ -56,7 +57,9 @@ const liveParams = {
 // Playback session state — reset on every play() / stop()
 const playCtxRef = { current: null };  // { cells, progressionId, synth, instrument, loop }
 const eventsRef  = { current: [] };    // all scheduled transport IDs
-const metRef     = { current: null };  // metronome synths
+// Live drum schedule — mutated in place so Transport callbacks always read current state.
+// Array of { timeSec, rows } mirroring the drumSchedule passed to play().
+const liveDrumSchedule = { current: [] };
 
 // ─── Module-level scheduling helpers ─────────────────────────────────────────
 // Extracted so both play() and reschedule() share identical logic with no
@@ -166,22 +169,17 @@ function scheduleLoop(nextStart, dispatch, stopFn, skipToSec = 0) {
 export function usePlayback() {
   const { state, dispatch } = useAppState();
   const { getSynth } = useSampler();
+  const { startDrumSeq, stopDrumSeq, updateDrumRows, updateDrumOverrides } = useDrumSequencer();
 
   const stop = useCallback(() => {
     Tone.getTransport().stop();
     Tone.getTransport().cancel();
     stopAllSynths();
+    stopDrumSeq();
     eventsRef.current.forEach(id => {
       try { Tone.getTransport().clear(id); } catch {}
     });
     eventsRef.current = [];
-    if (metRef.current) {
-      metRef.current.loop?.dispose();
-      metRef.current.clickSynth?.dispose();
-      metRef.current.snareSynth?.dispose();
-      metRef.current.bassSynth?.dispose();
-      metRef.current = null;
-    }
     playCtxRef.current = null;
     dispatch({ type: 'SET_PLAYING', playing: false });
     dispatch({ type: 'SET_PLAYBACK_CURSOR', cursor: null });
@@ -208,10 +206,9 @@ export function usePlayback() {
     instrument,
     playStyle,
     noteValue,
-    arpOctaves,
-    arpRepeat,
     humanize = 0,
-    metronome,
+    drumRows,       // optional rows array for the initial/global drum pattern
+    drumSchedule,   // optional [{ timeSec, rows }] — switch drum rows at each time boundary
     loop = true,
   }) => {
     await Tone.start();
@@ -220,8 +217,6 @@ export function usePlayback() {
     // Seed live params — only overwrite entries that were explicitly provided.
     if (playStyle  !== undefined) liveParams.playStyle.current  = playStyle;
     if (noteValue  !== undefined) liveParams.noteValue.current  = noteValue;
-    if (arpOctaves !== undefined) liveParams.arpOctaves.current = arpOctaves;
-    if (arpRepeat  !== undefined) liveParams.arpRepeat.current  = arpRepeat;
     if (timeSig    !== undefined) liveParams.timeSig.current    = timeSig;
     liveParams.humanize.current = humanize;
 
@@ -235,13 +230,35 @@ export function usePlayback() {
     const firstEnd = schedulePass(0, dispatch, stop);
     scheduleLoop(firstEnd, dispatch, stop);
 
-    if (metronome?.enabled) {
-      setupMetronome(metRef, metronome.mode, bpm, timeSig);
+    // Store the schedule in the live ref so Transport callbacks always read
+    // the latest assignment even if the user changes it mid-playback.
+    liveDrumSchedule.current = drumSchedule ?? [];
+
+    // Start the drum sequencer with the initial rows (may be null).
+    // Await so samples are loaded before transport.start() fires.
+    if (drumRows || drumSchedule?.length) {
+      await startDrumSeq(drumRows ?? drumSchedule[0].rows, timeSig ?? '4/4');
+    }
+
+    // Schedule per-section drum row switches.
+    // The callback reads from liveDrumSchedule at fire time so that any
+    // mid-playback assignment change (assign/unassign) takes effect immediately.
+    if (drumSchedule?.length) {
+      for (let i = 0; i < drumSchedule.length; i++) {
+        const { timeSec } = drumSchedule[i];
+        if (timeSec <= 0) continue; // first section already handled by startDrumSeq above
+        const scheduleIndex = i;
+        const id = transport.schedule(() => {
+          const entry = liveDrumSchedule.current[scheduleIndex];
+          updateDrumRows(entry?.rows ?? null);
+        }, timeSec);
+        eventsRef.current.push(id);
+      }
     }
 
     dispatch({ type: 'SET_PLAYING', playing: true });
     transport.start('+0');
-  }, [stop, getSynth, dispatch]);
+  }, [stop, getSynth, startDrumSeq, updateDrumRows, dispatch]);
 
   // Update live params without restarting playback.
   const updateLiveParams = useCallback((params) => {
@@ -364,7 +381,25 @@ export function usePlayback() {
     scheduleLoop(firstEnd, dispatch, stop);
   }, [stop, dispatch]);
 
-  return { play, stop, pause, resume, updateLiveParams, updateLiveCells, updateLiveInstrument, reschedule, seekTo };
+  /**
+   * Update a single entry in the live drum schedule mid-playback.
+   * If the changed section is the one currently playing, also hot-swaps
+   * the running drum rows immediately via updateDrumRows.
+   */
+  const updateLiveDrumSchedule = useCallback((trackIndex, rows) => {
+    if (trackIndex < 0 || trackIndex >= liveDrumSchedule.current.length) return;
+    liveDrumSchedule.current[trackIndex] = {
+      ...liveDrumSchedule.current[trackIndex],
+      rows,
+    };
+    // If this section is currently playing, apply immediately.
+    const cursor = playCtxRef.current ? state.playbackCursor : null;
+    if (cursor?.trackIndex === trackIndex) {
+      updateDrumRows(rows);
+    }
+  }, [state.playbackCursor, updateDrumRows]);
+
+  return { play, stop, pause, resume, updateLiveParams, updateLiveCells, updateLiveInstrument, updateDrumRows, updateDrumOverrides, updateLiveDrumSchedule, reschedule, seekTo };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -433,23 +468,3 @@ function buildEvents(notes, playStyle, noteValue, cellDur, humanize = 0, pattern
   );
 }
 
-function setupMetronome(metRef, mode, bpm, timeSig) {
-  const [beats, division] = timeSig.split('/').map(Number);
-  const clickSynth = new Tone.MembraneSynth({ pitchDecay: 0.008, envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 } }).toDestination();
-  const snareSynth = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.05 } }).toDestination();
-  const bassSynth  = new Tone.MembraneSynth({ pitchDecay: 0.05, octaves: 6, envelope: { attack: 0.001, decay: 0.3, sustain: 0, release: 0.1 } }).toDestination();
-  let count = 0;
-  const loop = new Tone.Loop((time) => {
-    const beat = count % beats;
-    if (mode === 'click') {
-      clickSynth.triggerAttackRelease(beat === 0 ? 880 : 440, '32n', time);
-    } else {
-      if (beat === 0 || (beats === 4 && beat === 2)) bassSynth.triggerAttackRelease('C1', '8n', time);
-      if ((beats === 4 && (beat === 1 || beat === 3)) || (beats === 3 && beat === 1)) snareSynth.triggerAttackRelease('8n', time);
-      clickSynth.triggerAttackRelease(800, '32n', time);
-    }
-    count++;
-  }, `${division}n`);
-  loop.start(0);
-  metRef.current = { loop, clickSynth, snareSynth, bassSynth };
-}

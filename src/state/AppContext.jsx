@@ -9,7 +9,10 @@ export const INITIAL_STATE = {
   timeSig: '4/4',
   instrument: 'piano',
   groove: 'straight',   // 'straight' | 'shuffle' | 'swing'
-  metronome: { enabled: false, mode: 'click' }, // mode: 'click' | 'drum'
+  autoPlay: true,       // preview sounds automatically on cell/step selection
+  metronome: {
+    drumEnabled: false,     // whether the drum sequencer fires during playback
+  },
 
   // Built-in + user-saved custom patterns: array of { id, name, pattern, noteValue, loop }
   // IDs prefixed with "builtin-" are shipped with the app; user patterns use "custom-<timestamp>".
@@ -171,7 +174,72 @@ export const INITIAL_STATE = {
   progressions: {},
   progressionOrder: [],
 
-  // Track arrangement: array of { progressionId, repetitions }
+  // ── Drum patterns ───────────────────────────────────────────────────────────
+  // Map id → drumPattern; ids prefixed 'drum-builtin-' are presets, 'drum-<ts>' are user-saved.
+  // Each drumPattern: { id, name, rows: [ { rowId, label, sample, volume, reverb, steps: [{ on, vel }×16] } ] }
+  drumPatterns: {
+    'drum-builtin-rock': {
+      id: 'drum-builtin-rock',
+      name: 'Rock 1',
+      rows: [
+        { rowId: 'hh',     label: 'HH',    sample: 'hh-closed',  volume: 80, reverb: 15, steps: Array.from({length:16},(_,i)=>({ on:i%4===0, vel:1.0 })) },
+        { rowId: 'snare',  label: 'Snare', sample: 'snare-kit8',  volume: 85, reverb: 20, steps: Array.from({length:16},(_,i)=>({ on:i===4||i===12, vel:1.0 })) },
+        { rowId: 'bd',     label: 'BD',    sample: 'kick',        volume: 90, reverb: 10, steps: Array.from({length:16},(_,i)=>({ on:i===0||i===8,  vel:1.0 })) },
+        { rowId: 'custom', label: 'Perc',  sample: 'clap',        volume: 70, reverb: 15, steps: Array.from({length:16},()=>({ on:false, vel:1.0 })) },
+      ],
+    },
+    'drum-builtin-rock2': {
+      id: 'drum-builtin-rock2',
+      name: 'Rock 2',
+      rows: [
+        // HH on steps 0,2,4,6,8,10,12,14 — velocity fades across each group of 4:
+        //   beat downbeat (0,8) → 1.0, upbeat (4,12) → 0.7, off-beats → 0.45
+        { rowId: 'hh',    label: 'HH',   sample: 'hh-closed', volume: 80, reverb: 15, steps: (() => {
+          const HH_ON  = new Set([0, 2, 4, 6, 8, 10, 12, 14]);
+          const HH_VEL = { 0:1.0, 2:0.45, 4:0.7, 6:0.45, 8:1.0, 10:0.45, 12:0.7, 14:0.45 };
+          return Array.from({length:16}, (_,i) => ({ on: HH_ON.has(i), vel: HH_VEL[i] ?? 1.0 }));
+        })() },
+        { rowId: 'snare',  label: 'Snare', sample: 'snare-kit8', volume: 85, reverb: 20, steps: Array.from({length:16},(_,i)=>({ on:i===4||i===12, vel:1.0 })) },
+        { rowId: 'bd',     label: 'BD',    sample: 'kick',       volume: 90, reverb: 10, steps: Array.from({length:16},(_,i)=>({ on:i===0||i===8,  vel:1.0 })) },
+        { rowId: 'custom', label: 'Perc',  sample: 'clap',       volume: 70, reverb: 15, steps: Array.from({length:16},()=>({ on:false, vel:1.0 })) },
+      ],
+    },
+    'drum-builtin-funk': {
+      id: 'drum-builtin-funk',
+      name: 'Funk',
+      rows: [
+        { rowId: 'hh',     label: 'HH',    sample: 'hh-closed',  volume: 75, reverb: 15, steps: Array.from({length:16},(_,i)=>({ on:true,  vel:i%4===0?1.0:i%2===0?0.7:0.4 })) },
+        { rowId: 'snare',  label: 'Snare', sample: 'snare-kit8',  volume: 85, reverb: 20, steps: Array.from({length:16},(_,i)=>({ on:i===4||i===10||i===12, vel:1.0 })) },
+        { rowId: 'bd',     label: 'BD',    sample: 'kick',        volume: 90, reverb: 10, steps: Array.from({length:16},(_,i)=>({ on:i===0||i===6||i===8,   vel:1.0 })) },
+        { rowId: 'custom', label: 'Perc',  sample: 'clap',        volume: 70, reverb: 15, steps: Array.from({length:16},(_,i)=>({ on:i===2||i===14, vel:0.7 })) },
+      ],
+    },
+    'drum-builtin-bossa': {
+      id: 'drum-builtin-bossa',
+      name: 'Bossa Nova',
+      rows: [
+        { rowId: 'hh',     label: 'HH',    sample: 'hh-closed',  volume: 70, reverb: 25, steps: Array.from({length:16},(_,i)=>({ on:i%2===0, vel:i%4===0?1.0:0.6 })) },
+        { rowId: 'snare',  label: 'Snare', sample: 'snare-brush', volume: 75, reverb: 30, steps: Array.from({length:16},(_,i)=>({ on:i===4||i===8||i===12, vel:0.7 })) },
+        { rowId: 'bd',     label: 'BD',    sample: 'kick',        volume: 85, reverb: 15, steps: Array.from({length:16},(_,i)=>({ on:i===0||i===4, vel:1.0 })) },
+        { rowId: 'custom', label: 'Rim',   sample: 'snare-rim',   volume: 65, reverb: 20, steps: Array.from({length:16},(_,i)=>({ on:i===3||i===7||i===11||i===15, vel:0.5 })) },
+      ],
+    },
+    'drum-builtin-hiphop': {
+      id: 'drum-builtin-hiphop',
+      name: 'Hip-Hop',
+      rows: [
+        { rowId: 'hh',     label: 'HH',    sample: 'hh-closed',  volume: 70, reverb: 15, steps: Array.from({length:16},(_,i)=>({ on:i%4===2, vel:0.7 })) },
+        { rowId: 'snare',  label: 'Snare', sample: 'snare-kit8',  volume: 85, reverb: 25, steps: Array.from({length:16},(_,i)=>({ on:i===4||i===12, vel:1.0 })) },
+        { rowId: 'bd',     label: 'BD',    sample: 'kick',        volume: 90, reverb: 10, steps: Array.from({length:16},(_,i)=>({ on:i===0||i===3||i===8||i===11, vel:1.0 })) },
+        { rowId: 'custom', label: 'Perc',  sample: 'clap',        volume: 70, reverb: 15, steps: Array.from({length:16},()=>({ on:false, vel:1.0 })) },
+      ],
+    },
+  },
+  drumPatternOrder: ['drum-builtin-rock','drum-builtin-rock2','drum-builtin-funk','drum-builtin-bossa','drum-builtin-hiphop'],
+  // id of the drum pattern currently loaded in the editor panel (null = blank)
+  activeDrumPatternId: 'drum-builtin-rock2',
+
+  // Track arrangement: array of { progressionId, repetitions, drumPatternId? }
   track: [],
   trackName: '',
   trackDescription: '',
@@ -198,6 +266,8 @@ function reducer(state, action) {
       return { ...state, instrument: action.instrument };
     case 'SET_METRONOME':
       return { ...state, metronome: { ...state.metronome, ...action.payload } };
+    case 'SET_AUTO_PLAY':
+      return { ...state, autoPlay: action.autoPlay };
     case 'SET_GROOVE':
       return { ...state, groove: action.groove };
 
@@ -257,7 +327,7 @@ function reducer(state, action) {
       return { ...state, activeProgressionId: action.id };
 
     case 'CREATE_PROGRESSION': {
-      const { id, name, size } = action;
+      const { id, name, size, cellDuration } = action;
       const cells = Array.from({ length: size }, (_, i) => ({
         id: `${id}-cell-${i}`,
         chord: null,   // { root, typeKey }
@@ -271,7 +341,7 @@ function reducer(state, action) {
           [id]: {
             id, name, cells,
             scaleRoot: null, scaleKey: null,
-            cellDuration: 'whole',
+            cellDuration: cellDuration ?? 'whole',
             // Per-progression pattern — null means "inherit from app global"
             playStyle:   null,
             noteValue:   null,
@@ -423,6 +493,30 @@ function reducer(state, action) {
         },
       };
 
+    case 'DUPLICATE_PROGRESSION': {
+      const src = state.progressions[action.id];
+      if (!src) return state;
+      const newId = `prog-${Date.now()}`;
+      const clonedCells = src.cells.map((cell, i) => ({
+        ...JSON.parse(JSON.stringify(cell)),
+        id: `${newId}-cell-${i}`,
+      }));
+      const clone = {
+        ...JSON.parse(JSON.stringify(src)),
+        id: newId,
+        name: `${src.name} (copy)`,
+        cells: clonedCells,
+      };
+      const srcOrderIdx = state.progressionOrder.indexOf(action.id);
+      const newOrder = [...state.progressionOrder];
+      newOrder.splice(srcOrderIdx + 1, 0, newId);
+      return {
+        ...state,
+        progressions: { ...state.progressions, [newId]: clone },
+        progressionOrder: newOrder,
+      };
+    }
+
     case 'SET_CELL_CHORD': {
       const prog = state.progressions[action.progressionId];
       if (!prog) return state;
@@ -552,10 +646,91 @@ function reducer(state, action) {
     case 'SET_TRACK_DESCRIPTION':
       return { ...state, trackDescription: action.description };
 
+    // ── Drum pattern actions ─────────────────────────────────────────────────
+
+    case 'SET_ACTIVE_DRUM_PATTERN':
+      return { ...state, activeDrumPatternId: action.id };
+
+    case 'SAVE_DRUM_PATTERN': {
+      const { pattern } = action;
+      const existing = state.drumPatterns[pattern.id];
+      return {
+        ...state,
+        drumPatterns: { ...state.drumPatterns, [pattern.id]: pattern },
+        drumPatternOrder: existing
+          ? state.drumPatternOrder
+          : [...state.drumPatternOrder, pattern.id],
+        activeDrumPatternId: pattern.id,
+      };
+    }
+
+    case 'DELETE_DRUM_PATTERN': {
+      const { [action.id]: _removed, ...restPatterns } = state.drumPatterns;
+      return {
+        ...state,
+        drumPatterns: restPatterns,
+        drumPatternOrder: state.drumPatternOrder.filter(id => id !== action.id),
+        activeDrumPatternId:
+          state.activeDrumPatternId === action.id ? null : state.activeDrumPatternId,
+        // Remove pattern assignment from any track item that used it
+        track: state.track.map(item =>
+          item.drumPatternId === action.id ? { ...item, drumPatternId: null } : item
+        ),
+      };
+    }
+
+    case 'UPDATE_DRUM_STEP': {
+      // Toggle / set velocity on a single step in the active pattern.
+      // action: { patternId, rowId, stepIndex, on, vel }
+      const pat = state.drumPatterns[action.patternId];
+      if (!pat) return state;
+      const rows = pat.rows.map(row => {
+        if (row.rowId !== action.rowId) return row;
+        const steps = row.steps.map((s, i) =>
+          i === action.stepIndex ? { on: action.on, vel: action.vel } : s
+        );
+        return { ...row, steps };
+      });
+      return {
+        ...state,
+        drumPatterns: { ...state.drumPatterns, [action.patternId]: { ...pat, rows } },
+      };
+    }
+
+    case 'UPDATE_DRUM_ROW': {
+      // Update label / note for a row.
+      const pat = state.drumPatterns[action.patternId];
+      if (!pat) return state;
+      const rows = pat.rows.map(row =>
+        row.rowId === action.rowId ? { ...row, ...action.changes } : row
+      );
+      return {
+        ...state,
+        drumPatterns: { ...state.drumPatterns, [action.patternId]: { ...pat, rows } },
+      };
+    }
+
+    case 'SET_TRACK_DRUM_PATTERN': {
+      const track = state.track.map((item, i) =>
+        i === action.index ? { ...item, drumPatternId: action.drumPatternId } : item
+      );
+      return { ...state, track };
+    }
+
     case 'LOAD_PROJECT':
       return {
         ...INITIAL_STATE,
         ...action.project,
+        // Deep-merge sub-objects so new fields added to INITIAL_STATE are
+        // always present even when loading an older saved project that lacks them.
+        metronome: { ...INITIAL_STATE.metronome, ...(action.project.metronome ?? {}) },
+        drumPatterns: {
+          ...INITIAL_STATE.drumPatterns,
+          ...(action.project.drumPatterns ?? {}),
+        },
+        drumPatternOrder: action.project.drumPatternOrder?.length
+          ? action.project.drumPatternOrder
+          : INITIAL_STATE.drumPatternOrder,
         activeView: 'track',
         // Playback state must never be restored from a saved file —
         // the audio engine is not running when the file loads.

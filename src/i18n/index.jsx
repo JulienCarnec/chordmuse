@@ -23,17 +23,12 @@ const en = {
   pauseTitle:         'Pause',
   stopTitle:          'Stop',
   resumeTitle:        'Resume',
-  hum:                'Hum',
+  hum:                'Human.',
   humTitle:           'Humanize: add subtle timing/velocity variation',
   velocity:           'Velocity',
   velocityTitle:      'Max velocity: controls how hard notes are struck',
   reverb:             'Reverb',
   reverbTitle:        'Reverb wet level',
-  metro:              'Metro',
-  metroTitle:         'Toggle metronome',
-  metroModeTitle:     'Metronome sound: click or drum pattern',
-  metroClick:         'Click',
-  metroDrum:          'Drums',
   grooveStraight:     'Straight',
   grooveShuffle:      'Shuffle',
   grooveSwing:        'Swing',
@@ -55,10 +50,14 @@ const en = {
   progressions:       'Chord Grids',
   arrangement:        'Arrangement',
   dragHint:           'drag to reorder · Ctrl+drag to copy',
-  addProgressionHint: 'Create your first chord grid above.',
+  addProgressionHint: 'Create your first chord grid.',
   addArrangementHint: 'Add chord grids from the left panel.',
-  newProgBtn:         '+ New',
+  newProgBtn:         'Create',
   newProgBtnTitle:    'Create a new chord grid with this name',
+  newGridLabel:       'New Grid',
+  newGridDialogTitle: 'New Chord Grid',
+  newGridNameLabel:   'Name',
+  newGridSizeLabel:   'Number of cells',
   editBtn:            '✎ Edit',
   addToTrackBtn:      '+ Add',
   numberOfCells:      'Number of cells',
@@ -78,6 +77,7 @@ const en = {
   clearChordTitle:    '— clear chord —',
   collapseItem:       'Collapse',
   expandItem:         'Expand',
+  duplicateProgTitle: 'Duplicate this chord grid',
 
   // ChordGrid
   scalePanel:         'Scale',
@@ -235,6 +235,99 @@ const en = {
   cellDurationQuarter:   '♩ Quarter (noire)',
   cellDurationEighth:    '♪ Eighth (croche)',
 
+  // Drum Sequencer panel
+  drumEnable:            'Enable drum sequencer',
+  drumDisable:           'Disable drum sequencer',
+  drumOnLabel:           'ON',
+  drumOffLabel:          'OFF',
+  drumSeqTitle:          'Drum Sequencer',
+  drumSeqCollapse:       'Collapse drum sequencer',
+  drumSeqExpand:         'Expand drum sequencer',
+  drumPresetLabel:       'Preset',
+  drumPresetPlaceholder: '— load preset —',
+  drumPresetConfirm:     'Replace the current pattern with this preset?',
+  drumSaveLabel:         'Save as',
+  drumSaveNamePlaceholder: 'Pattern name…',
+  drumSaveBtn:           'Save',
+  drumDeleteBtn:         'Delete',
+  drumDeleteConfirm:     (name) => `Delete pattern "${name}"?`,
+  drumAssignLabel:       'Assign to section',
+  drumAssignTitle:       'Assign this drum pattern to an arrangement section',
+  drumAssignPopupTitle:  (name) => `Assign "${name}" to:`,
+  drumBadgeTitle:        (name) => `Drum pattern: ${name}`,
+  drumBadgeRemoveTitle:  'Remove drum pattern from this section',
+  drumClearBtn:          'Clear',
+  drumStepTitle:         (step) => `Step ${step + 1}`,
+  drumVelTitle:          'Right-click to cycle velocity',
+  drumVolLabel:          'Vol',
+  drumReverbLabel:       'Rev',
+  drumSampleLabel:       'Sound',
+  drumRowLabelHH:        'Hi-Hat',
+  drumRowLabelSnare:     'Snare',
+  drumRowLabelBD:        'Bass Drum',
+  drumRowLabelCustom:    'Custom',
+  drumPlayingStep:       'Current step',
+  // Sample list: { value, label } pairs shown in the SamplePicker dropdown.
+  // Values match keys in SAMPLE_CATALOGUE (useDrumSequencer.js).
+  drumSamples: [
+    // ── Kick ──────────────────────────────────────────────────────────────────
+    { value: 'kick',           label: 'Kick — CR78'            },  // kick-cr78.mp3
+    { value: 'kick-acoustic',  label: 'Kick — Kit 3'           },  // kick-kit3.mp3
+    { value: 'kick-tight',     label: 'Kick — Kit 8'           },  // kick-kit8.mp3
+    // ── Snare ─────────────────────────────────────────────────────────────────
+    { value: 'side-stick',     label: 'Snare — CR78 (rim)'     },  // snare-cr78.mp3 (soft)
+    { value: 'snare',          label: 'Snare — CR78'           },  // snare-cr78.mp3
+    { value: 'clap',           label: 'Clap — Roland SC-88'    },  // clap-roland.wav
+    { value: 'snare-electric', label: 'Snare — Kit 8'          },  // snare-kit8.mp3
+    { value: 'snare-brush',    label: 'Snare — Kit 3'          },  // snare-kit3.mp3
+    // ── Hi-Hat ────────────────────────────────────────────────────────────────
+    { value: 'hh-closed',      label: 'Hi-Hat Closed — CR78'   },  // hihat-closed-cr78.mp3
+    { value: 'hh-pedal',       label: 'Hi-Hat Closed — Roland' },  // hihat-closed-roland.wav
+    { value: 'hh-open',        label: 'Hi-Hat Open — Korg M1'  },  // hihat-open-korg.wav
+    // ── Toms (GM 41, 43, 45, 47, 48, 50) ─────────────────────────────────────
+    { value: 'tom-floor-lo',   label: 'Low Floor Tom'    },  // GM 41 — F1
+    { value: 'tom-floor-hi',   label: 'High Floor Tom'   },  // GM 43 — G1
+    { value: 'tom-lo',         label: 'Low Tom'          },  // GM 45 — A1
+    { value: 'tom-lo-mid',     label: 'Low-Mid Tom'      },  // GM 47 — B1
+    { value: 'tom-hi-mid',     label: 'Hi Mid Tom'       },  // GM 48 — C2
+    { value: 'tom-hi',         label: 'High Tom'         },  // GM 50 — D2
+    // ── Cymbals ───────────────────────────────────────────────────────────────
+    { value: 'crash',          label: 'Crash — Berklee 1'      },  // crash-berklee1.mp3
+    { value: 'ride',           label: 'Ride — Berklee'         },  // ride-berklee1.mp3
+    { value: 'chinese-cymbal', label: 'Crash — Berklee 2 (alt)'},  // crash-berklee2.mp3
+    { value: 'ride-bell',      label: 'Ride — Roland SC-88'    },  // ride-roland.wav
+    { value: 'splash',         label: 'Crash — Berklee 1 (soft)'},  // crash-berklee1.mp3
+    { value: 'crash-2',        label: 'Crash — Berklee 2'      },  // crash-berklee2.mp3
+    { value: 'ride-2',         label: 'Ride — Roland SC-88'    },  // ride-roland.wav
+    // ── Cowbell / Latin (GM 54, 56, 58) ──────────────────────────────────────
+    { value: 'tambourine',     label: 'Tambourine'       },  // GM 54 — F#2
+    { value: 'cowbell',        label: 'Cowbell'          },  // GM 56 — Ab2
+    { value: 'vibraslap',      label: 'Vibraslap'        },  // GM 58 — Bb2
+    // ── Bongos (GM 60–61) ─────────────────────────────────────────────────────
+    { value: 'bongo-hi',       label: 'Hi Bongo'         },  // GM 60 — C3
+    { value: 'bongo-lo',       label: 'Low Bongo'        },  // GM 61 — C#3
+    // ── Congas (GM 62–64) ─────────────────────────────────────────────────────
+    { value: 'conga-mute',     label: 'Mute Hi Conga'    },  // GM 62 — D3
+    { value: 'conga-hi',       label: 'Open Hi Conga'    },  // GM 63 — Eb3
+    { value: 'conga-lo',       label: 'Low Conga'        },  // GM 64 — E3
+    // ── Timbales (GM 65–66) ───────────────────────────────────────────────────
+    { value: 'timbale-hi',     label: 'High Timbale'     },  // GM 65 — F3
+    { value: 'timbale-lo',     label: 'Low Timbale'      },  // GM 66 — F#3
+    // ── Agogo (GM 67–68) ──────────────────────────────────────────────────────
+    { value: 'agogo-hi',       label: 'High Agogo'       },  // GM 67 — G3
+    { value: 'agogo-lo',       label: 'Low Agogo'        },  // GM 68 — Ab3
+    // ── Shakers (GM 69–70) ────────────────────────────────────────────────────
+    { value: 'cabasa',         label: 'Cabasa'           },  // GM 69 — A3
+    { value: 'maracas',        label: 'Maracas'          },  // GM 70 — Bb3
+    // ── Wood / Claves (GM 75–77) ──────────────────────────────────────────────
+    { value: 'claves',         label: 'Claves'           },  // GM 75 — Eb4
+    { value: 'wood-block-hi',  label: 'Hi Wood Block'    },  // GM 76 — E4
+    { value: 'wood-block-lo',  label: 'Low Wood Block'   },  // GM 77 — F4
+    // ── Triangle (GM 80–81) ───────────────────────────────────────────────────
+    { value: 'triangle-mute',  label: 'Mute Triangle'    },  // GM 80 — Ab4
+    { value: 'triangle-open',  label: 'Open Triangle'    },  // GM 81 — A4
+  ],
+
   // Language toggle
   languageLabel:         'FR',
 };
@@ -251,17 +344,12 @@ const fr = {
   pauseTitle:         'Pause',
   stopTitle:          'Arrêter',
   resumeTitle:        'Reprendre',
-  hum:                'Hum',
+  hum:                'Human.',
   humTitle:           'Humaniser : ajouter de légères variations de tempo et de vélocité',
   velocity:           'Vélocité',
   velocityTitle:      'Vélocité max : contrôle la force des notes',
   reverb:             'Réverb',
   reverbTitle:        'Niveau de réverbération',
-  metro:              'Métro',
-  metroTitle:         'Activer/désactiver le métronome',
-  metroModeTitle:     'Son du métronome : click ou batterie',
-  metroClick:         'Click',
-  metroDrum:          'Batterie',
   grooveStraight:     'Régulier',
   grooveShuffle:      'Shuffle',
   grooveSwing:        'Swing',
@@ -283,10 +371,14 @@ const fr = {
   progressions:       'Grilles d\'accords',
   arrangement:        'Arrangement',
   dragHint:           'glisser pour réordonner · Ctrl+glisser pour copier',
-  addProgressionHint: 'Créez votre première grille d\'accords ci-dessus.',
+  addProgressionHint: 'Créez votre première grille d\'accords.',
   addArrangementHint: 'Ajoutez des grilles d\'accords depuis le panneau gauche.',
-  newProgBtn:         '+ Nouveau',
+  newProgBtn:         'Créer',
   newProgBtnTitle:    'Créer une nouvelle grille d\'accords avec ce nom',
+  newGridLabel:       'Nouvelle grille',
+  newGridDialogTitle: 'Nouvelle grille d\'accords',
+  newGridNameLabel:   'Nom',
+  newGridSizeLabel:   'Nombre de cellules',
   editBtn:            '✎ Éditer',
   addToTrackBtn:      '+ Ajouter',
   numberOfCells:      'Nombre de cellules',
@@ -306,6 +398,7 @@ const fr = {
   clearChordTitle:    '— effacer l\'accord —',
   collapseItem:       'Réduire',
   expandItem:         'Développer',
+  duplicateProgTitle: 'Dupliquer cette grille d\'accords',
 
   // ChordGrid
   scalePanel:         'Gamme',
@@ -469,6 +562,97 @@ const fr = {
   cellDurationHalf:      '𝅗𝅥 Blanche',
   cellDurationQuarter:   '♩ Noire',
   cellDurationEighth:    '♪ Croche',
+
+  // Drum Séquenceur
+  drumEnable:            'Activer le séquenceur',
+  drumDisable:           'Désactiver le séquenceur',
+  drumOnLabel:           'ON',
+  drumOffLabel:          'OFF',
+  drumSeqTitle:          'Drum Séquenceur',
+  drumSeqCollapse:       'Réduire le séquenceur',
+  drumSeqExpand:         'Agrandir le séquenceur',
+  drumPresetLabel:       'Préréglage',
+  drumPresetPlaceholder: '— charger —',
+  drumPresetConfirm:     'Remplacer le motif actuel par ce préréglage ?',
+  drumSaveLabel:         'Enregistrer sous',
+  drumSaveNamePlaceholder: 'Nom du motif…',
+  drumSaveBtn:           'Enreg.',
+  drumDeleteBtn:         'Suppr.',
+  drumDeleteConfirm:     (name) => `Supprimer le motif "${name}" ?`,
+  drumAssignLabel:       'Associer à une section',
+  drumAssignTitle:       'Associer ce motif à une section de l\'arrangement',
+  drumAssignPopupTitle:  (name) => `Associer « ${name} » à :`,
+  drumBadgeTitle:        (name) => `Motif batterie : ${name}`,
+  drumBadgeRemoveTitle:  'Retirer le motif de batterie de cette section',
+  drumClearBtn:          'Effacer',
+  drumStepTitle:         (step) => `Pas ${step + 1}`,
+  drumVelTitle:          'Clic droit pour changer la vélocité',
+  drumVolLabel:          'Vol',
+  drumReverbLabel:       'Rév',
+  drumSampleLabel:       'Son',
+  drumRowLabelHH:        'Hi-Hat',
+  drumRowLabelSnare:     'Caisse claire',
+  drumRowLabelBD:        'Grosse caisse',
+  drumRowLabelCustom:    'Personnalisé',
+  drumPlayingStep:       'Pas en cours',
+  drumSamples: [
+    // ── Grosse caisse ─────────────────────────────────────────────────────────
+    { value: 'kick',           label: 'Kick — CR78'              },  // kick-cr78.mp3
+    { value: 'kick-acoustic',  label: 'Kick — Kit 3'             },  // kick-kit3.mp3
+    { value: 'kick-tight',     label: 'Kick — Kit 8'             },  // kick-kit8.mp3
+    // ── Caisse claire ─────────────────────────────────────────────────────────
+    { value: 'side-stick',     label: 'Caisse claire — CR78 (bord)'},  // snare-cr78.mp3 (atténué)
+    { value: 'snare',          label: 'Caisse claire — CR78'     },  // snare-cr78.mp3
+    { value: 'clap',           label: 'Clap — Roland SC-88'      },  // clap-roland.wav
+    { value: 'snare-electric', label: 'Caisse claire — Kit 8'    },  // snare-kit8.mp3
+    { value: 'snare-brush',    label: 'Caisse claire — Kit 3'    },  // snare-kit3.mp3
+    // ── Hi-Hat ────────────────────────────────────────────────────────────────
+    { value: 'hh-closed',      label: 'Hi-Hat fermé — CR78'      },  // hihat-closed-cr78.mp3
+    { value: 'hh-pedal',       label: 'Hi-Hat fermé — Roland'    },  // hihat-closed-roland.wav
+    { value: 'hh-open',        label: 'Hi-Hat ouvert — Korg M1'  },  // hihat-open-korg.wav
+    // ── Toms (GM 41, 43, 45, 47, 48, 50) ─────────────────────────────────────
+    { value: 'tom-floor-lo',   label: 'Tom basse grave'     },  // GM 41
+    { value: 'tom-floor-hi',   label: 'Tom basse aigu'      },  // GM 43
+    { value: 'tom-lo',         label: 'Tom grave'           },  // GM 45
+    { value: 'tom-lo-mid',     label: 'Tom médium grave'    },  // GM 47
+    { value: 'tom-hi-mid',     label: 'Tom médium aigu'     },  // GM 48
+    { value: 'tom-hi',         label: 'Tom aigu'            },  // GM 50
+    // ── Cymbales ──────────────────────────────────────────────────────────────
+    { value: 'crash',          label: 'Crash — Berklee 1'        },  // crash-berklee1.mp3
+    { value: 'ride',           label: 'Ride — Berklee'           },  // ride-berklee1.mp3
+    { value: 'chinese-cymbal', label: 'Crash — Berklee 2 (alt)'  },  // crash-berklee2.mp3
+    { value: 'ride-bell',      label: 'Ride — Roland SC-88'      },  // ride-roland.wav
+    { value: 'splash',         label: 'Crash — Berklee 1 (doux)' },  // crash-berklee1.mp3
+    { value: 'crash-2',        label: 'Crash — Berklee 2'        },  // crash-berklee2.mp3
+    { value: 'ride-2',         label: 'Ride — Roland SC-88'      },  // ride-roland.wav
+    // ── Latin / Cowbell (GM 54, 56, 58) ──────────────────────────────────────
+    { value: 'tambourine',     label: 'Tambourin'           },  // GM 54
+    { value: 'cowbell',        label: 'Cowbell'             },  // GM 56
+    { value: 'vibraslap',      label: 'Vibraslap'           },  // GM 58
+    // ── Bongos (GM 60–61) ─────────────────────────────────────────────────────
+    { value: 'bongo-hi',       label: 'Bongo aigu'          },  // GM 60
+    { value: 'bongo-lo',       label: 'Bongo grave'         },  // GM 61
+    // ── Congas (GM 62–64) ─────────────────────────────────────────────────────
+    { value: 'conga-mute',     label: 'Conga étouffée'      },  // GM 62
+    { value: 'conga-hi',       label: 'Conga ouverte'       },  // GM 63
+    { value: 'conga-lo',       label: 'Conga grave'         },  // GM 64
+    // ── Timbales (GM 65–66) ───────────────────────────────────────────────────
+    { value: 'timbale-hi',     label: 'Timbale aiguë'       },  // GM 65
+    { value: 'timbale-lo',     label: 'Timbale grave'       },  // GM 66
+    // ── Agogo (GM 67–68) ──────────────────────────────────────────────────────
+    { value: 'agogo-hi',       label: 'Agogo aigu'          },  // GM 67
+    { value: 'agogo-lo',       label: 'Agogo grave'         },  // GM 68
+    // ── Shakers (GM 69–70) ────────────────────────────────────────────────────
+    { value: 'cabasa',         label: 'Cabasa'              },  // GM 69
+    { value: 'maracas',        label: 'Maracas'             },  // GM 70
+    // ── Bois / Claves (GM 75–77) ──────────────────────────────────────────────
+    { value: 'claves',         label: 'Claves'              },  // GM 75
+    { value: 'wood-block-hi',  label: 'Wood-block aigu'     },  // GM 76
+    { value: 'wood-block-lo',  label: 'Wood-block grave'    },  // GM 77
+    // ── Triangle (GM 80–81) ───────────────────────────────────────────────────
+    { value: 'triangle-mute',  label: 'Triangle étouffé'    },  // GM 80
+    { value: 'triangle-open',  label: 'Triangle ouvert'     },  // GM 81
+  ],
 
   // Language toggle
   languageLabel:         'EN',

@@ -1,8 +1,20 @@
+/* ── Outer shell: horizontal flex row holding mainCol + drum pane ────────── */
 .wrapper {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   min-height: 0;
   flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Main content column (everything except the drum pane) ───────────────── */
+.mainCol {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;      /* allow shrinking when drum pane opens */
+  min-height: 0;
   overflow-y: auto;
   position: relative;
 }
@@ -151,7 +163,11 @@
 .body {
   display: flex;
   gap: 0;
-  align-items: flex-start;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* ── Library (left panel) ───────────────────────────────────── */
@@ -163,6 +179,7 @@
   border-right: 1px solid #e5e7eb;
   padding: 10px 12px;
   gap: 8px;
+  background: #f7f8fa;
 }
 
 .libraryHeader {
@@ -178,42 +195,89 @@
   margin: 0;
 }
 
-.createRow {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.createInput {
-  flex: 1;
-  min-width: 0;
-  padding: 4px 7px;
-  border: 1px solid #d1d5db;
-  border-radius: 5px;
-  font-size: 12px;
-}
-
-.sizeInput {
-  width: 38px;
-  padding: 4px 4px;
-  border: 1px solid #d1d5db;
-  border-radius: 5px;
-  font-size: 12px;
-  text-align: center;
-}
-
+/* kept for dialog confirm button */
 .createBtn {
-  padding: 4px 10px;
+  padding: 6px 16px;
   border: 1px solid #10b981;
-  border-radius: 5px;
+  border-radius: 6px;
   background: #10b981;
   color: #fff;
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
-  flex-shrink: 0;
 }
 .createBtn:disabled { background: #d1d5db; border-color: #d1d5db; color: #9ca3af; cursor: not-allowed; }
+
+/* ── New-grid centered button ───────────────────────────────── */
+.newGridBtnRow {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 4px;
+}
+
+.newGridFloatBtn {
+  padding: 7px 20px;
+  border: 1.5px dashed #6b7280;
+  border-radius: 8px;
+  background: transparent;
+  color: #374151;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.newGridFloatBtn:hover {
+  background: #e5e7eb;
+  border-color: #374151;
+}
+
+/* ── New-grid dialog ────────────────────────────────────────── */
+.newGridDialog {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  padding: 24px;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.newGridDialogTitle {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.newGridDialogLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  margin-top: 6px;
+}
+
+.newGridDialogInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 9px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #f9fafb;
+}
+.newGridDialogInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: #fff;
+}
+
+.newGridDialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
 
 /* Progression card */
 .progCard {
@@ -281,6 +345,17 @@
 }
 .addToTrackBtn:hover { background: #dcfce7; }
 
+.duplicateProgBtn {
+  padding: 2px 7px;
+  border: 1px solid #c4b5fd;
+  border-radius: 4px;
+  background: #fff;
+  color: #7c3aed;
+  font-size: 13px;
+  cursor: pointer;
+}
+.duplicateProgBtn:hover { background: #f5f3ff; }
+
 .deleteProgBtn {
   padding: 2px 7px;
   border: 1px solid #fca5a5;
@@ -299,6 +374,8 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+  min-width: 0;
+  overflow-y: auto;
 }
 
 .dragHint {
@@ -485,6 +562,41 @@
 .trackItemHeaderSeekable:hover .trackName {
   color: #2563eb;
   text-decoration: underline;
+}
+
+/* ── Drum pattern badge on arrangement tiles ──────────────── */
+.drumBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #7c3aed;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  border-radius: 20px;
+  padding: 2px 6px 2px 8px;
+  white-space: nowrap;
+  cursor: default;
+  user-select: none;
+}
+
+.drumBadgeRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #7c3aed;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 1px;
+  border-radius: 50%;
+}
+.drumBadgeRemove:hover {
+  background: #ede9fe;
+  color: #5b21b6;
 }
 
 .collapseBtn {

@@ -1,0 +1,498 @@
+/* ─── Outer wrapper (always rendered — either panel or thumb) ────────────── */
+/* The component always occupies the right edge of its parent flex row.       */
+
+/* ─── Panel container (open) ─────────────────────────────────────────────── */
+.panel {
+  width: fit-content;
+  min-width: 0;
+  background: #111827;
+  border-left: 1px solid #374151;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  /* Fill full height of the parent flex row */
+  align-self: stretch;
+  overflow-y: auto;
+}
+
+/* ─── Collapsed thumb (closed) ──────────────────────────────────────────── */
+.thumb {
+  width: 28px;
+  flex-shrink: 0;
+  align-self: stretch;
+  background: #1f2937;
+  border-left: 1px solid #374151;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.thumb:hover { background: #374151; }
+
+/* Rotated label inside the thumb */
+.thumbLabel {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  margin-top: 8px;
+}
+.thumb:hover .thumbLabel { color: #d1d5db; }
+
+/* ─── Header ─────────────────────────────────────────────────────────────── */
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #1f2937;
+  border-bottom: 1px solid #374151;
+}
+
+.panelHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── ON/OFF power button ─────────────────────────────────────────────────── */
+.onOffBtn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 14px 4px 10px;
+  border: 1.5px solid #374151;
+  border-radius: 20px;
+  background: #111827;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.onOffBtn:hover {
+  border-color: #6b7280;
+  color: #9ca3af;
+}
+
+/* The coloured dot indicator */
+.onOffDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #374151;
+  flex-shrink: 0;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+/* Active (ON) state */
+.onOffBtnOn {
+  border-color: #10b981;
+  background: #022c22;
+  color: #34d399;
+  box-shadow: 0 0 0 1px #10b98133, 0 0 8px 0 #10b98122;
+}
+.onOffBtnOn:hover {
+  background: #064e3b;
+  box-shadow: 0 0 0 1px #10b98155, 0 0 12px 0 #10b98133;
+}
+.onOffBtnOn .onOffDot {
+  background: #10b981;
+  box-shadow: 0 0 0 2px #10b98144, 0 0 6px 2px #10b98166;
+}
+
+.panelTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f9fafb;
+  letter-spacing: 0.03em;
+}
+
+.collapseBtn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+.collapseBtn:hover { background: #374151; color: #f9fafb; }
+
+/* ─── Toolbar ─────────────────────────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #1f2937;
+}
+
+.assignRow {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 10px 8px;
+  border-bottom: 1px solid #1f2937;
+}
+
+.assignBtn {
+  padding: 4px 12px;
+  border: 1px solid #4b5563;
+  border-radius: 6px;
+  background: #1f2937;
+  color: #d1d5db;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+.assignBtn:hover {
+  background: #374151;
+  border-color: #6b7280;
+  color: #f9fafb;
+}
+
+/* Popup list that opens below the button */
+.assignPopup {
+  width: 100%;
+  background: #1f2937;
+  border: 1px solid #4b5563;
+  border-radius: 8px;
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+}
+
+.assignPopupTitle {
+  font-size: 10px;
+  color: #6b7280;
+  padding: 2px 10px 6px;
+  border-bottom: 1px solid #374151;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.assignSectionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 5px 10px;
+  background: none;
+  border: none;
+  color: #d1d5db;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  gap: 6px;
+}
+.assignSectionBtn:hover {
+  background: #374151;
+  color: #f9fafb;
+}
+
+.assignSectionBtnActive {
+  color: #34d399;
+}
+.assignSectionBtnActive:hover {
+  background: #064e3b;
+}
+
+.assignSectionName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assignSectionCheck {
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.toolbarLabel {
+  font-size: 11px;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+.toolbarSelect {
+  padding: 2px 5px;
+  border: 1px solid #374151;
+  border-radius: 4px;
+  background: #1f2937;
+  color: #d1d5db;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.toolbarSelectWide {
+  min-width: 240px;
+}
+
+.toolbarInput {
+  width: 120px;
+  min-width: 0;
+  padding: 3px 6px;
+  border: 1px solid #374151;
+  border-radius: 4px;
+  background: #1f2937;
+  color: #f9fafb;
+  font-size: 12px;
+}
+.toolbarInput:focus { outline: none; border-color: #3b82f6; }
+
+.saveBtn, .deleteBtn, .clearBtn {
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid #374151;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.saveBtn {
+  background: #2563eb;
+  color: #fff;
+  border-color: #1d4ed8;
+}
+.saveBtn:hover:not(:disabled) { background: #1d4ed8; }
+.saveBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.deleteBtn {
+  background: #7f1d1d;
+  color: #fca5a5;
+  border-color: #991b1b;
+}
+.deleteBtn:hover { background: #991b1b; color: #fff; }
+
+.clearBtn {
+  background: #374151;
+  color: #d1d5db;
+}
+.clearBtn:hover { background: #4b5563; color: #fff; }
+
+/* ─── Step grid ──────────────────────────────────────────────────────────── */
+/*
+ * 4-column layout per row (right-aligned in panel):
+ *   90px  — sample selector (replaces the text label)
+ *   1fr   — 16 step buttons
+ *   36px  — volume knob
+ *   36px  — reverb knob
+ *
+ * The whole grid is pushed to the right edge of the panel.
+ */
+.grid {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px 10px 8px;
+  gap: 5px;
+  align-items: flex-end; /* pushes every gridRow to the right */
+}
+
+.gridRow {
+  display: grid;
+  /* steps column: exactly as wide as 16×20px buttons + 15×3px gaps = 365px */
+  grid-template-columns: 90px 365px 36px 36px;
+  align-items: center;
+  gap: 0 6px;
+  justify-content: end; /* push the whole row to the right edge */
+}
+
+.rowLabelSpacer {
+  /* empty first-column cell in the header row */
+}
+
+.stepNums {
+  display: flex;
+  gap: 3px;
+}
+
+.stepNum {
+  width: 20px;
+  text-align: center;
+  font-size: 9px;
+  color: #4b5563;
+  user-select: none;
+  flex-shrink: 0;
+}
+.stepNumBeat {
+  color: #6b7280;
+  font-weight: 700;
+}
+
+/* Header labels above the knob columns */
+.knobColHeader {
+  font-size: 9px;
+  color: #4b5563;
+  text-align: center;
+  user-select: none;
+  justify-self: center;
+}
+
+.steps {
+  display: flex;
+  gap: 3px;
+}
+
+/* Knob wrapper — centres the knob SVG in its column cell */
+.knobCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+}
+
+/* ─── Step buttons ──────────────────────────────────────────────────────── */
+.step {
+  width: 20px;
+  height: 28px;
+  border-radius: 4px;
+  border: 1px solid #374151;
+  background: #1f2937;
+  color: transparent;
+  font-size: 10px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.05s, border-color 0.05s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+.step:hover { border-color: #6b7280; background: #374151; }
+
+/* Beat 1 of each group of 4 — slightly brighter background */
+.stepBeat { background: #1e3a5f22; }
+.stepBeat:hover { background: #374151; }
+
+/* Active playing step (real-time highlight) */
+.stepActive {
+  border-color: #fbbf24 !important;
+  box-shadow: 0 0 0 1px #fbbf2466;
+}
+
+/* ── ON states: 3 velocity levels ────────────────────────────────────────── */
+.stepOn { color: #f9fafb; }
+
+/* High velocity — red (1.0) */
+.velHigh {
+  background: #dc2626;
+  border-color: #b91c1c;
+  color: #fff;
+}
+.velHigh:hover { background: #b91c1c; }
+
+/* Medium velocity — orange (0.7) */
+.velMed {
+  background: #ea580c;
+  border-color: #c2410c;
+  color: #fff;
+}
+.velMed:hover { background: #c2410c; }
+
+/* Low velocity — yellow (0.45) */
+.velLow {
+  background: #ca8a04;
+  border-color: #a16207;
+  color: #fff;
+}
+.velLow:hover { background: #a16207; }
+
+/* ─── SamplePicker custom dropdown ──────────────────────────────────────── */
+.samplePicker {
+  position: relative;
+  width: 100%;
+  justify-self: stretch;
+}
+
+/* Trigger button */
+.samplePickerBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 3px 5px;
+  border: 1px solid #374151;
+  border-radius: 4px;
+  background: #1f2937;
+  color: #9ca3af;
+  font-size: 10px;
+  cursor: pointer;
+  text-align: left;
+  gap: 4px;
+}
+.samplePickerBtn:hover {
+  border-color: #6b7280;
+  color: #d1d5db;
+}
+
+.samplePickerLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.samplePickerArrow {
+  font-size: 7px;
+  flex-shrink: 0;
+  color: #4b5563;
+}
+
+/* Dropdown list — opens downward */
+.samplePickerList {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  width: 160px;        /* wide enough for long GM names */
+  max-height: 280px;
+  overflow-y: auto;
+  background: #1f2937;
+  border: 1px solid #4b5563;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  list-style: none;
+  margin: 0;
+  padding: 3px 0;
+  z-index: 100;
+}
+
+.samplePickerItem {
+  padding: 5px 10px;
+  font-size: 11px;
+  color: #d1d5db;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.samplePickerItem:hover {
+  background: #374151;
+  color: #f9fafb;
+}
+.samplePickerItemActive {
+  color: #60a5fa;
+  font-weight: 600;
+}
+.samplePickerItemActive:hover {
+  background: #1e3a5f;
+}
