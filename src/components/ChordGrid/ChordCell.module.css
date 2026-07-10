@@ -48,6 +48,7 @@
   border-right: 1px dashed #d1d5db;
   min-width: 0;
   overflow: visible;
+  position: relative;
 }
 .subCell:first-child { border-radius: 7px 0 0 7px; }
 .subCell:last-child  { border-right: none; border-radius: 0 7px 7px 0; }
@@ -277,3 +278,72 @@
 .dominantII    { background: #ffedd5; border-color: #f97316; }
 .subdominantI  { background: #dbeafe; border-color: #3b82f6; }
 .subdominantII { background: #f3e8ff; border-color: #a855f7; }
+
+/* ─── Role info bubble (top-right lightbulb) ─────────────── */
+.roleInfoBubble {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  z-index: 10;
+  /* Tooltip is revealed on hover */
+}
+
+.roleInfoIcon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.45;
+  color: #374151;
+  transition: opacity 0.12s;
+  flex-shrink: 0;
+}
+
+.roleInfoBubble:hover .roleInfoIcon {
+  opacity: 0.85;
+}
+
+/* Tooltip bubble — shown on hover */
+.roleInfoTooltip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  max-width: 230px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #1f2937;
+  /* Background is set inline via parent so it blends with the role colour */
+  background: inherit;
+  border: 1px solid rgba(0,0,0,0.12);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.13);
+  white-space: normal;
+  word-break: break-word;
+  pointer-events: none;
+  z-index: 200;
+  text-align: left;
+}
+
+/* Make tooltip background match the role cell colour */
+.inScale       .roleInfoTooltip { background: #dcfce7; }
+.dominantI     .roleInfoTooltip { background: #fef9c3; }
+.dominantII    .roleInfoTooltip { background: #ffedd5; }
+.subdominantI  .roleInfoTooltip { background: #dbeafe; }
+.subdominantII .roleInfoTooltip { background: #f3e8ff; }
+
+.roleInfoBubble:hover .roleInfoTooltip {
+  display: block;
+}
+
+/* Prevent tooltip from being clipped by the cell overflow */
+.cell,
+.subCell {
+  overflow: visible;
+}

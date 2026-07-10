@@ -31,6 +31,29 @@ const ROLE_SUFFIX = {
 
 const ROLE_ORDER = ['in-scale', 'dominant-I', 'dominant-II', 'subdominant-I', 'subdominant-II', 'out'];
 
+// Roles that get a highlight (and therefore need the info bubble)
+const HIGHLIGHTED_ROLES = new Set(['in-scale', 'dominant-I', 'dominant-II', 'subdominant-I', 'subdominant-II']);
+
+/**
+ * Small lightbulb icon that appears in the top-right of highlighted cells.
+ * On hover it shows a tooltip explaining the harmonic role.
+ */
+function RoleInfoBubble({ role }) {
+  const t = useT();
+  const tooltip = t.roleTooltip?.[role];
+  if (!tooltip) return null;
+  return (
+    <span className={styles.roleInfoBubble} title={tooltip} aria-label={tooltip}>
+      <svg className={styles.roleInfoIcon} viewBox="0 0 16 16" aria-hidden="true">
+        <circle cx="8" cy="6" r="4.5" fill="none" strokeWidth="1.4" stroke="currentColor"/>
+        <line x1="8" y1="11" x2="8" y2="13.5" strokeWidth="1.4" stroke="currentColor" strokeLinecap="round"/>
+        <line x1="6.2" y1="10.5" x2="9.8" y2="10.5" strokeWidth="1.2" stroke="currentColor" strokeLinecap="round"/>
+      </svg>
+      <span className={styles.roleInfoTooltip}>{tooltip}</span>
+    </span>
+  );
+}
+
 // Build all root+type combos sorted by role relevance
 function buildOptions(scaleRoot, scaleKey) {
   const useFlat = preferFlat(scaleRoot, scaleKey);
@@ -264,8 +287,10 @@ export function ChordCell({
           const subHasCustom = sc?.playStyle != null;
           const subPatternOpen = openSubPatterns.has(si);
           const isSubPickerOpen = subPickerOpen === si;
+          const subRole = role(sc);
           return (
-            <div key={si} className={`${styles.subCell} ${ROLE_STYLES[role(sc)] ?? ''}`}>
+            <div key={si} className={`${styles.subCell} ${ROLE_STYLES[subRole] ?? ''}`}>
+              {HIGHLIGHTED_ROLES.has(subRole) && <RoleInfoBubble role={subRole} />}
               <div className={styles.labelWrapper}>
                 {sc
                   ? <span
@@ -335,6 +360,7 @@ export function ChordCell({
   const r = role(cell.chord);
   return (
     <div className={`${styles.cell} ${ROLE_STYLES[r] ?? ''} ${isCurrent ? styles.current : ''}`}>
+      {HIGHLIGHTED_ROLES.has(r) && <RoleInfoBubble role={r} />}
       <div className={styles.labelWrapper}>
         {cell.chord
           ? <span

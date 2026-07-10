@@ -117,6 +117,15 @@ const en = {
   newGridBtn:         '+ New',
   deleteGridTitle:    'Delete this chord grid',
 
+  // Chord-cell role tooltip
+  roleTooltip: {
+    'in-scale':       'This chord fits in the active scale.',
+    'dominant-I':     'Dominant of I (V7): creates tension that resolves back to the tonic.',
+    'dominant-II':    'Secondary dominant (V7/II): dominant of degree II, adds colour outside the scale.',
+    'subdominant-I':  'Subdominant of I (IV7): a soft pre-dominant colour derived from the scale.',
+    'subdominant-II': 'Subdominant of II (II7): a secondary pre-dominant, adds mild tension.',
+  },
+
   // Piano keyboard
   pianoLegendScale:       'Scale',
   pianoLegendHighlighted: 'Highlighted',
@@ -437,6 +446,15 @@ const fr = {
   newGridNameRequired:'Saisir un nom de grille d\'abord',
   newGridBtn:         '+ Nouvelle',
   deleteGridTitle:    'Supprimer cette grille d\'accords',
+
+  // Chord-cell role tooltip
+  roleTooltip: {
+    'in-scale':       'Cet accord appartient à la gamme active.',
+    'dominant-I':     'Dominante de I (V7) : crée une tension qui se résout sur la tonique.',
+    'dominant-II':    'Dominante secondaire (V7/II) : dominante du degré II, colore en dehors de la gamme.',
+    'subdominant-I':  'Sous-dominante de I (IV7) : couleur pré-dominante douce issue de la gamme.',
+    'subdominant-II': 'Sous-dominante de II (II7) : pré-dominante secondaire, légère tension.',
+  },
 
   // Piano keyboard
   pianoLegendScale:       'Gamme',
