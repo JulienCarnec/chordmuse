@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import * as Tone from 'tone';
 import { useAppState } from '../../state/AppContext';
 import { useSampler, stopAllSynths } from '../../audio/useSampler';
@@ -104,7 +104,8 @@ function schedulePass(timeOffset, dispatch, stopFn, skipToSec = 0) {
     const loop   = seg.patternLoop ?? liveParams.patternLoop.current;
     const maxVel = liveParams.maxVelocity.current;
     const groove = liveParams.groove.current;
-    const events = buildEvents(notes, psId, nv, dur, hum, loop, maxVel, groove, liveParams.customPatterns.current);
+    const patternTimeOffset = seg.patternTimeOffset ?? 0;
+    const events = buildEvents(notes, psId, nv, dur, hum, loop, maxVel, groove, liveParams.customPatterns.current, patternTimeOffset);
 
     for (const ev of events) {
       const t = Math.max(cursor, cursor + ev.time + ev.jitter);
@@ -173,6 +174,12 @@ export function usePlayback() {
   const { getSynth } = useSampler();
   const { startDrumSeq, stopDrumSeq, updateDrumRows, updateDrumOverrides } = useDrumSequencer();
 
+  // Keep customPatterns ref always current so pattern lookups in the
+  // scheduler never see a stale closure snapshot.
+  useEffect(() => {
+    liveParams.customPatterns.current = state.customPatterns ?? [];
+  }, [state.customPatterns]);
+
   const stop = useCallback(() => {
     Tone.getTransport().stop();
     Tone.getTransport().cancel();
@@ -223,8 +230,6 @@ export function usePlayback() {
     if (timeSig    !== undefined) liveParams.timeSig.current    = timeSig;
     if (groove     !== undefined) liveParams.groove.current     = groove;
     liveParams.humanize.current = humanize;
-    // Always keep customPatterns in sync so the scheduler can resolve pattern IDs
-    liveParams.customPatterns.current = state.customPatterns ?? [];
 
     const synth = await getSynth(instrument);
     const transport = Tone.getTransport();
@@ -432,21 +437,26 @@ function buildSegments(cells, barDur) {
     const cellNoteValue   = cell.noteValue   ?? cell._progNoteValue   ?? null;
     const cellPatternLoop = cell.patternLoop ?? cell._progPatternLoop ?? null;
     if (cell.split) {
-      for (const sc of cell.subCells.filter(Boolean)) {
+      const subCells = cell.subCells.filter(Boolean);
+      subCells.forEach((sc, subIdx) => {
         const subPlayStyle   = sc.playStyle   ?? cellPlayStyle;
         const subNoteValue   = sc.noteValue   ?? cellNoteValue;
         const subPatternLoop = sc.patternLoop ?? cellPatternLoop;
+        // Second sub-cell continues the pattern where the first left off.
+        // patternTimeOffset = duration already consumed = subIdx × half-cell duration.
+        const patternTimeOffset = subIdx * (cellDur / 2);
         segments.push({
           notes: voiceChord(sc, sc.octave ?? BASE_OCTAVE),
           dur: cellDur / 2,
           cellIndex: cellLocalCellIndex,
           progressionId: cellProgressionId,
           trackIndex: cellTrackIndex,
-          playStyle:   subPlayStyle,
-          noteValue:   subNoteValue,
-          patternLoop: subPatternLoop,
+          playStyle:        subPlayStyle,
+          noteValue:        subNoteValue,
+          patternLoop:      subPatternLoop,
+          patternTimeOffset,
         });
-      }
+      });
     } else if (cell.chord) {
       segments.push({
         notes: voiceChord(cell.chord, cell.chord.octave ?? BASE_OCTAVE),
@@ -467,7 +477,7 @@ function buildSegments(cells, barDur) {
  * Build the event list for one chord segment.
  * playStyleId may be a pattern id (new) or a legacy {…} string.
  */
-function buildEvents(notes, playStyleId, noteValue, cellDur, humanize = 0, patternLoop = true, maxVelocity = 0.80, groove = 'straight', customPatterns = []) {
+function buildEvents(notes, playStyleId, noteValue, cellDur, humanize = 0, patternLoop = true, maxVelocity = 0.80, groove = 'straight', customPatterns = [], patternTimeOffset = 0) {
   const velFn = (baseVel, hum) => humanVel(baseVel * maxVelocity / 0.80, hum);
 
   // Resolve pattern: new id-based or legacy string
@@ -497,7 +507,7 @@ function buildEvents(notes, playStyleId, noteValue, cellDur, humanize = 0, patte
 
   return buildEventsFromPattern(
     patternStr, notes, resolvedNoteValue, cellDur, resolvedLoop,
-    humanize, velFn, humanJitter, groove,
+    humanize, velFn, humanJitter, groove, patternTimeOffset,
   );
 }
 

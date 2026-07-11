@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { CHROMATIC, noteIndex, noteName, preferFlat, displayNote } from '../../theory/notes';
 import { CHORD_TYPES, chordLabel, chordLabelDisplay, getChordRole } from '../../theory/chords';
 import { PatternControls } from './PatternControls';

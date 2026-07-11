@@ -40,7 +40,7 @@ export function PatternControls({
   chord = null,
 }) {
   const t = useT();
-  const { state } = useAppState();
+  const { state, dispatch } = useAppState();
   const { updateLiveParams } = usePlayback();
   const [showEditor, setShowEditor] = useState(false);
   const [editingPattern, setEditingPattern] = useState(null);
@@ -53,6 +53,7 @@ export function PatternControls({
 
   // Is the currently selected pattern a built-in (read-only)?
   const isBuiltin = typeof playStyle === 'string' && playStyle.startsWith('builtin-');
+  const isCustom  = typeof playStyle === 'string' && playStyle.startsWith('custom-');
 
   function applyPattern(patternId) {
     const p = customPatterns.find(cp => cp.id === patternId);
@@ -86,6 +87,13 @@ export function PatternControls({
   function handlePatternApplied(patternId) {
     applyPattern(patternId);
     setShowEditor(false);
+  }
+
+  function handleDelete() {
+    if (!isCustom) return;
+    dispatch({ type: 'DELETE_PATTERN', id: playStyle });
+    // If this was the selected pattern, clear it back to null (use global)
+    onChange({ playStyle: null, noteValue, patternLoop });
   }
 
   if (compact) {
@@ -150,6 +158,14 @@ export function PatternControls({
             onClick={() => handleOpenEditor(false)}
             title={t.editPattern}
           >{t.editPattern}</button>
+        )}
+
+        {isCustom && (
+          <button
+            className={styles.deletePatternBtn}
+            onClick={handleDelete}
+            title={t.deletePattern}
+          >{t.deletePattern}</button>
         )}
       </div>
 

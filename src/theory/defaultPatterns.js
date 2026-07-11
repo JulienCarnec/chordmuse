@@ -113,13 +113,16 @@ function makeReggaeUpBeat() {
  * 8 steps of 8n. All sub-patterns: a0, c0, then 3-note rolling figure × 2
  */
 function makePreludeArpegio() {
+  // Bach BWV 846 exact figure: root↓ · 5th↓ · root · 3rd · 5th · root · 3rd · 5th
+  // For C major (C4,E4,G4): C3·G3·C4·E4·G4·C4·E4·G4
+  // a=root(0), b=3rd(1), c=5th(2) — so 5th below = c0 ✓
   // 3-note: a0, c0, a1, b1, c1, a1, b1, c1
-  // 4-note: a0, c0, a1, c1, d1, a1, c1, d1
+  // 4-note: a0, c0, a1, c1, d1, a1, c1, d1  (uses 5th=c for bass, 7th=d for high)
   // 5-note: a0, c0, a1, c1, e1, a1, c1, e1
   function makeGrid3() {
     return buildGrid(8, 3, [
       note(0, 'a', 0),
-      note(1, 'c', 0),
+      note(1, 'c', 0), // 5th one octave below (c = 3rd chord tone = 5th of chord)
       note(2, 'a', 1),
       note(3, 'b', 1),
       note(4, 'c', 1),
@@ -131,7 +134,7 @@ function makePreludeArpegio() {
   function makeGrid4() {
     return buildGrid(8, 4, [
       note(0, 'a', 0),
-      note(1, 'c', 0),
+      note(1, 'c', 0), // 5th below
       note(2, 'a', 1),
       note(3, 'c', 1),
       note(4, 'd', 1),
@@ -143,7 +146,7 @@ function makePreludeArpegio() {
   function makeGrid5() {
     return buildGrid(8, 5, [
       note(0, 'a', 0),
-      note(1, 'c', 0),
+      note(1, 'c', 0), // 5th below
       note(2, 'a', 1),
       note(3, 'c', 1),
       note(4, 'e', 1),
@@ -398,6 +401,310 @@ function makeArp3Notes() {
   };
 }
 
+/**
+ * Let It Be arpeggio — McCartney's characteristic bass + ascending fill + descending tail.
+ * 16 steps of 16n = exactly one 4/4 bar at any tempo.
+ *
+ * Shape (3-note chord): bass · _ · 5th↓ · root · 3rd · 5th · 3rd · root · 5th↓ · bass · _ · 5th↓ · root · 3rd · 5th · 3rd
+ * For C major (C4,E4,G4): C3 · _ · G3 · C4 · E4 · G4 · E4 · C4 · G3 · C3 · _ · G3 · C4 · E4 · G4 · E4
+ *
+ * The rest on step 2 (beat 1.25) gives the characteristic "breathe" feel.
+ * Bass on steps 1 & 10 anchors beats 1 & 3 like McCartney's left hand.
+ * The ascending fill c0→a1→b1→c1 and descending return b1→a1 mirror his ornament exactly.
+ *
+ * With loop=true, split half-cells play steps 0–7: bass·_·5th↓·root·3rd·5th·3rd·root
+ * — a complete mini-phrase that works perfectly on its own.
+ */
+function makeLetItBeArp() {
+  // 3-note chord: a=root, b=3rd, c=5th
+  // Steps: a0·_·c0·a1·b1·c1·b1·a1 · c0·a0·_·c0·a1·b1·c1·b1
+  const grid3 = buildGrid(16, 3, [
+    note(0,  'a', 0),           // beat 1:   bass root
+    // step 1 = rest
+    note(2,  'c', 0),           // beat 1.5: 5th below (open voicing)
+    note(3,  'a', 1),           // beat 1.75: root
+    note(4,  'b', 1),           // beat 2:   3rd
+    note(5,  'c', 1),           // beat 2.25: 5th (top of fill)
+    note(6,  'b', 1),           // beat 2.5: 3rd (start descent)
+    note(7,  'a', 1),           // beat 2.75: root
+    note(8,  'c', 0),           // beat 3:   5th below (links back)
+    note(9,  'a', 0),           // beat 3.25: bass root
+    // step 10 = rest
+    note(11, 'c', 0),           // beat 3.75: 5th below
+    note(12, 'a', 1),           // beat 4:   root
+    note(13, 'b', 1),           // beat 4.25: 3rd
+    note(14, 'c', 1),           // beat 4.5: 5th
+    note(15, 'b', 1),           // beat 4.75: 3rd (leads back into next bar)
+  ]);
+
+  // 4-note chord: a=root, b=3rd, c=5th, d=7th
+  // Extra colour: 7th replaces the top 5th in the fill peak
+  const grid4 = buildGrid(16, 4, [
+    note(0,  'a', 0),
+    note(2,  'c', 0),
+    note(3,  'a', 1),
+    note(4,  'b', 1),
+    note(5,  'd', 1),           // 7th at fill peak (richer colour)
+    note(6,  'c', 1),
+    note(7,  'b', 1),
+    note(8,  'c', 0),
+    note(9,  'a', 0),
+    note(11, 'c', 0),
+    note(12, 'a', 1),
+    note(13, 'b', 1),
+    note(14, 'd', 1),
+    note(15, 'c', 1),
+  ]);
+
+  // 5-note chord: a=root, b=3rd, c=5th, d=7th, e=9th
+  // 9th replaces 7th at peak for extended harmony
+  const grid5 = buildGrid(16, 5, [
+    note(0,  'a', 0),
+    note(2,  'c', 0),
+    note(3,  'a', 1),
+    note(4,  'b', 1),
+    note(5,  'e', 1),           // 9th at fill peak
+    note(6,  'c', 1),
+    note(7,  'b', 1),
+    note(8,  'c', 0),
+    note(9,  'a', 0),
+    note(11, 'c', 0),
+    note(12, 'a', 1),
+    note(13, 'b', 1),
+    note(14, 'e', 1),
+    note(15, 'c', 1),
+  ]);
+
+  return {
+    id: 'builtin-let-it-be-arp',
+    name: 'Let It Be arpeggio',
+    loop: true,
+    columns: Array(16).fill('16n'),
+    subPatterns: { 3: grid3, 4: grid4, 5: grid5 },
+  };
+}
+
+/**
+ * Waltz oom-pah-pah — bass on beat 1, staccato chord on beats 2 & 3.
+ * 3 steps of 4n — fits exactly one 3/4 bar.
+ * Classic accompaniment for waltzes, Hallelujah (Cohen version), etc.
+ */
+function makeWaltzOomPah() {
+  function makeGrid(noteCount) {
+    return buildGrid(3, noteCount, [
+      note(0, 'a', 0),                        // beat 1: bass root
+      allNotes(1, 1, noteCount, true),         // beat 2: chord staccato
+      allNotes(2, 1, noteCount, true),         // beat 3: chord staccato
+    ]);
+  }
+  return {
+    id: 'builtin-waltz-oom-pah',
+    name: 'Waltz oom-pah-pah',
+    loop: false,
+    columns: ['4n', '4n', '4n'],
+    subPatterns: { 3: makeGrid(3), 4: makeGrid(4), 5: makeGrid(5) },
+  };
+}
+
+/**
+ * Hallelujah arpeggio — Jeff Buckley fingerpicking style, 3/4 waltz.
+ * 6 steps of 8n = exactly one 3/4 bar at any tempo.
+ * Figure: bass · 5th↓ · root · 5th · 3rd · 5th  (oscillating around the 5th)
+ * For C major (C4,E4,G4): C3·G3·C4·G4·E4·G4
+ * Simulates the iconic fingerpicked guitar arpeggio.
+ * Works for both full cells and half-bar split cells (loop=true, takes 3 steps).
+ */
+function makeHallelujahArp() {
+  // 3-note: a0, c0, a1, c1, b1, c1  → root↓·5th↓·root·5th·3rd·5th
+  const grid3 = buildGrid(6, 3, [
+    note(0, 'a', 0),
+    note(1, 'c', 0),
+    note(2, 'a', 1),
+    note(3, 'c', 1),
+    note(4, 'b', 1),
+    note(5, 'c', 1),
+  ]);
+  // 4-note: a0, c0, a1, c1, d1, b1  → root↓·5th↓·root·5th·7th·3rd
+  const grid4 = buildGrid(6, 4, [
+    note(0, 'a', 0),
+    note(1, 'c', 0),
+    note(2, 'a', 1),
+    note(3, 'c', 1),
+    note(4, 'd', 1),
+    note(5, 'b', 1),
+  ]);
+  // 5-note: a0, c0, a1, c1, e1, b1  → root↓·5th↓·root·5th·9th·3rd
+  const grid5 = buildGrid(6, 5, [
+    note(0, 'a', 0),
+    note(1, 'c', 0),
+    note(2, 'a', 1),
+    note(3, 'c', 1),
+    note(4, 'e', 1),
+    note(5, 'b', 1),
+  ]);
+  return {
+    id: 'builtin-hallelujah-arp',
+    name: 'Hallelujah arpeggio',
+    loop: true,
+    columns: ['8n', '8n', '8n', '8n', '8n', '8n'],
+    subPatterns: { 3: grid3, 4: grid4, 5: grid5 },
+  };
+}
+
+/**
+ * Blues walking bass comp — walking bass in low octave + chord stabs on beats 2 & 4.
+ * 8 steps of 8n = one 4/4 bar.
+ *
+ * Shape: root↓ · 3rd↓ · [5th↓+chord]. · 7th↓ · root↓ · 3rd↓ · [5th↓+chord]. · 7th↓
+ * For A7 (A4,C#4,E4,G4): A3·C#3·[E3+A4+C#4+E4+G4].·G3·A3·C#3·[E3+A4+C#4+E4+G4].·G3
+ *
+ * The walking bass moves root→3rd→5th→7th on every pair of 8th notes,
+ * landing the chord stab + bass 5th together on beats 2 and 4 (shuffle feel).
+ * Works perfectly with groove=shuffle.
+ */
+function makeBluesComp() {
+  // 3-note chord: a=root, b=3rd, c=5th — no 7th, use b as walk-back note
+  // Walk: a0·b0·[c0+chord].·b0·a0·b0·[c0+chord].·b0
+  function makeGrid3() {
+    return buildGrid(8, 3, [
+      note(0, 'a', 0),
+      note(1, 'b', 0),
+      { col: 2, tokens: [{ letter: 'c', octave: 0, staccato: true }, { letter: 'a', octave: 1, staccato: true }, { letter: 'b', octave: 1, staccato: true }, { letter: 'c', octave: 1, staccato: true }] },
+      note(3, 'b', 0),
+      note(4, 'a', 0),
+      note(5, 'b', 0),
+      { col: 6, tokens: [{ letter: 'c', octave: 0, staccato: true }, { letter: 'a', octave: 1, staccato: true }, { letter: 'b', octave: 1, staccato: true }, { letter: 'c', octave: 1, staccato: true }] },
+      note(7, 'b', 0),
+    ]);
+  }
+  // 4-note chord: a=root, b=3rd, c=5th, d=7th
+  // Walk: a0·b0·[c0+chord].·d0·a0·b0·[c0+chord].·d0
+  function makeGrid4() {
+    return buildGrid(8, 4, [
+      note(0, 'a', 0),
+      note(1, 'b', 0),
+      { col: 2, tokens: [{ letter: 'c', octave: 0, staccato: true }, { letter: 'a', octave: 1, staccato: true }, { letter: 'b', octave: 1, staccato: true }, { letter: 'c', octave: 1, staccato: true }, { letter: 'd', octave: 1, staccato: true }] },
+      note(3, 'd', 0),
+      note(4, 'a', 0),
+      note(5, 'b', 0),
+      { col: 6, tokens: [{ letter: 'c', octave: 0, staccato: true }, { letter: 'a', octave: 1, staccato: true }, { letter: 'b', octave: 1, staccato: true }, { letter: 'c', octave: 1, staccato: true }, { letter: 'd', octave: 1, staccato: true }] },
+      note(7, 'd', 0),
+    ]);
+  }
+  // 5-note chord: a=root, b=3rd, c=5th, d=7th, e=9th
+  // Walk: same as 4-note but chord includes 9th
+  function makeGrid5() {
+    return buildGrid(8, 5, [
+      note(0, 'a', 0),
+      note(1, 'b', 0),
+      { col: 2, tokens: [{ letter: 'c', octave: 0, staccato: true }, { letter: 'a', octave: 1, staccato: true }, { letter: 'b', octave: 1, staccato: true }, { letter: 'c', octave: 1, staccato: true }, { letter: 'd', octave: 1, staccato: true }, { letter: 'e', octave: 1, staccato: true }] },
+      note(3, 'd', 0),
+      note(4, 'a', 0),
+      note(5, 'b', 0),
+      { col: 6, tokens: [{ letter: 'c', octave: 0, staccato: true }, { letter: 'a', octave: 1, staccato: true }, { letter: 'b', octave: 1, staccato: true }, { letter: 'c', octave: 1, staccato: true }, { letter: 'd', octave: 1, staccato: true }, { letter: 'e', octave: 1, staccato: true }] },
+      note(7, 'd', 0),
+    ]);
+  }
+  return {
+    id: 'builtin-blues-comp',
+    name: 'Blues walking comp',
+    loop: false,
+    columns: Array(8).fill('8n'),
+    subPatterns: { 3: makeGrid3(), 4: makeGrid4(), 5: makeGrid5() },
+  };
+}
+
+/**
+ * Rock comp — chord on beats 1 & 3, rest on 2 & 4.
+ * Drives the rhythm without overcrowding; typical for rock/pop piano/guitar.
+ * 4 steps of 4n.
+ */
+function makeRockComp() {
+  function makeGrid(noteCount) {
+    return buildGrid(4, noteCount, [
+      allNotes(0, 1, noteCount),               // beat 1: chord sustain
+      // beat 2: rest
+      allNotes(2, 1, noteCount),               // beat 3: chord sustain
+      // beat 4: rest
+    ]);
+  }
+  return {
+    id: 'builtin-rock-comp',
+    name: 'Rock comp',
+    loop: false,
+    columns: ['4n', '4n', '4n', '4n'],
+    subPatterns: { 3: makeGrid(3), 4: makeGrid(4), 5: makeGrid(5) },
+  };
+}
+
+/**
+ * Jazz arp-comp — ascending single-note arpeggio from voiced octave into a chord stroke one oct up.
+ * 8 steps of 8n = one 4/4 bar.
+ *
+ * Shape: a1 · b1 · c1 · a2 · b2 · c2 · [all2]. · rest
+ * Example for D#maj7 (D#4,F#4,A#4,D5):
+ *   D#4 · F#4 · A#4 · D#5 · F#5 · A#5 · [D#5+F#5+A#5+D6]. · rest
+ *
+ * The arpeggio climbs from the voiced octave up to the octave above,
+ * then lands on a staccato full-chord stroke, with beat 4 left open.
+ */
+function makeJazzArpComp() {
+  // Fixed 8-step layout (8 × 8n = one 4/4 bar):
+  //   3-note: a1 b1 c1  a2 b2 c2  [a2+b2+c2].  rest
+  //   4-note: a1 b1 c1  d1 a2 c2  [a2+b2+c2+d2].  rest
+  //   5-note: a1 b1 c1  e1 a2 c2  [a2+b2+c2+d2+e2].  rest
+  const grid3 = buildGrid(8, 3, [
+    note(0, 'a', 1), note(1, 'b', 1), note(2, 'c', 1),  // voiced arp
+    note(3, 'a', 2), note(4, 'b', 2), note(5, 'c', 2),  // oct↑ arp
+    allNotes(6, 2, 3, false),                              // chord stroke oct↑
+    // step 7: rest
+  ]);
+  const grid4 = buildGrid(8, 4, [
+    note(0, 'a', 1), note(1, 'b', 1), note(2, 'c', 1),  // voiced arp (root·3rd·5th)
+    note(3, 'd', 1),                                      // 7th voiced
+    note(4, 'a', 2), note(5, 'c', 2),                    // root·5th oct↑
+    allNotes(6, 2, 4, false),                              // chord stroke oct↑
+    // step 7: rest
+  ]);
+  const grid5 = buildGrid(8, 5, [
+    note(0, 'a', 1), note(1, 'b', 1), note(2, 'c', 1),  // voiced arp (root·3rd·5th)
+    note(3, 'e', 1),                                      // 9th voiced
+    note(4, 'a', 2), note(5, 'c', 2),                    // root·5th oct↑
+    allNotes(6, 2, 5, false),                              // chord stroke oct↑
+    // step 7: rest
+  ]);
+  return {
+    id: 'builtin-jazz-arp-comp',
+    name: 'Jazz arp-comp',
+    loop: false,
+    columns: Array(8).fill('8n'),
+    subPatterns: { 3: grid3, 4: grid4, 5: grid5 },
+  };
+}
+
+/**
+ * Jazz comp — Freddie Green / stride-lite style.
+ * 4 steps of 4n: root(oct↓) · chord. · rest · chord.
+ * Bass on beat 1, chord stabs on 2 & 4 (leaving beat 3 open for swing feel).
+ */
+function makeJazzComp() {
+  function makeGrid(noteCount) {
+    return buildGrid(4, noteCount, [
+      note(0, 'a', 0),                        // beat 1: bass root
+      allNotes(1, 1, noteCount, true),         // beat 2: chord staccato
+      // beat 3: rest
+      allNotes(3, 1, noteCount, true),         // beat 4: chord staccato
+    ]);
+  }
+  return {
+    id: 'builtin-jazz-comp',
+    name: 'Jazz comp',
+    loop: false,
+    columns: ['4n', '4n', '4n', '4n'],
+    subPatterns: { 3: makeGrid(3), 4: makeGrid(4), 5: makeGrid(5) },
+  };
+}
+
 // ─── Export ───────────────────────────────────────────────────────────────────
 
 export const DEFAULT_PATTERNS = [
@@ -412,4 +719,11 @@ export const DEFAULT_PATTERNS = [
   makeArpUpDown(),
   makeArpDownUp(),
   makeArp3Notes(),
+  makeLetItBeArp(),
+  makeWaltzOomPah(),
+  makeHallelujahArp(),
+  makeBluesComp(),
+  makeRockComp(),
+  makeJazzComp(),
+  makeJazzArpComp(),
 ];

@@ -21,15 +21,29 @@ function cell(id, root, typeKey, inversion = 0, octave = undefined) {
   return { id, chord, split: false, subCells: [null, null] };
 }
 
-function splitCell(id, root1, type1, root2, type2, inv1 = 0, inv2 = 0, octave = undefined) {
+/**
+ * splitCell with optional per-subcell pattern overrides.
+ * sub1 / sub2: optional { playStyle, noteValue, patternLoop } objects that override
+ *              the progression-level pattern for each half of the split cell.
+ */
+function splitCell(id, root1, type1, root2, type2, inv1 = 0, inv2 = 0, octave = undefined, sub1 = null, sub2 = null) {
   const extra = octave !== undefined ? { octave } : {};
+  function makeSubCell(root, typeKey, inversion, override) {
+    if (!root) return null;
+    return {
+      root, typeKey, inversion, ...extra,
+      ...(override?.playStyle   !== undefined && { playStyle:   override.playStyle }),
+      ...(override?.noteValue   !== undefined && { noteValue:   override.noteValue }),
+      ...(override?.patternLoop !== undefined && { patternLoop: override.patternLoop }),
+    };
+  }
   return {
     id,
     chord: root1 ? { root: root1, typeKey: type1, inversion: inv1, ...extra } : null,
     split: true,
     subCells: [
-      root1 ? { root: root1, typeKey: type1, inversion: inv1, ...extra } : null,
-      root2 ? { root: root2, typeKey: type2, inversion: inv2, ...extra } : null,
+      makeSubCell(root1, type1, inv1, sub1),
+      makeSubCell(root2, type2, inv2, sub2),
     ],
   };
 }
@@ -118,6 +132,9 @@ function makeHallelujahTrack() {
   const p1id = 'demo-hal-verse';
   const p2id = 'demo-hal-chorus';
 
+  // Hallelujah arpeggio: 6×8n fingerpicking figure (root↓·5th↓·root·5th·3rd·5th).
+  // At 3/4 / 140 BPM: 6 eighth-notes = exactly 1 bar. loop=true so split half-cells
+  // play the first 3 steps (root↓·5th↓·root) — a natural bass+arp gesture.
   const verse = prog(p1id, 'Verse', [
     cell(`${p1id}-0`, 'C', 'maj'),
     cell(`${p1id}-1`, 'C', 'maj'),
@@ -127,22 +144,23 @@ function makeHallelujahTrack() {
     cell(`${p1id}-5`, 'G', 'maj'),
     cell(`${p1id}-6`, 'C', 'maj'),
     cell(`${p1id}-7`, 'G', 'maj'),
-  ], 'C', 'ionian', 'whole', 'builtin-buckley', '8n', false);
+  ], 'C', 'ionian', 'whole', 'builtin-hallelujah-arp', '8n', true);
 
   const chorus = prog(p2id, 'Chorus', [
     cell(`${p2id}-0`, 'F', 'maj'),
     cell(`${p2id}-1`, 'A', 'min'),
     cell(`${p2id}-2`, 'F', 'maj'),
+    // C/G split: each half = 3 eighth-notes → arp truncates at root↓·5th↓·root
     splitCell(`${p2id}-3`, 'C', 'maj', 'G', 'maj'),
     cell(`${p2id}-4`, 'E', 'min'),
     cell(`${p2id}-5`, 'A', 'min'),
     cell(`${p2id}-6`, 'G', 'maj'),
     cell(`${p2id}-7`, 'C', 'maj'),
-  ], 'C', 'ionian', 'whole', 'builtin-buckley', '8n', false);
+  ], 'C', 'ionian', 'whole', 'builtin-hallelujah-arp', '8n', true);
 
   return {
     trackName: 'Hallelujah — Leonard Cohen',
-    trackDescription: 'Key of C major · 3/4 waltz · Verse / Chorus',
+    trackDescription: 'Key of C major · 3/4 · Fingerpicked arpeggio (Buckley style) · Verse / Chorus',
     bpm: 140,
     timeSig: '3/4',
     instrument: 'piano',
@@ -174,6 +192,8 @@ function makeHallelujahTrack() {
 function makeBluesTrack() {
   const p1id = 'demo-blues-12bar';
 
+  // Walking bass (low oct) + chord stabs (mid oct) on beats 2 & 4.
+  // 8 steps × 8n = one 4/4 bar. Pairs with shuffle groove for authentic boogie feel.
   const blues12bar = prog(p1id, '12-Bar Blues', [
     cell(`${p1id}-0`,  'A', 'dom7'),
     cell(`${p1id}-1`,  'D', 'dom7'),
@@ -187,11 +207,11 @@ function makeBluesTrack() {
     cell(`${p1id}-9`,  'D', 'dom7'),
     cell(`${p1id}-10`, 'A', 'dom7'),
     splitCell(`${p1id}-11`, 'A', 'dom7', 'E', 'dom7'),
-  ], 'A', 'blues', 'whole', 'builtin-block', '4n', true);
+  ], 'A', 'blues', 'whole', 'builtin-blues-comp', '8n', false);
 
   return {
     trackName: 'Blues Shuffle in A',
-    trackDescription: '12-bar blues · A7 · Shuffle groove · Quick-change with turnaround',
+    trackDescription: '12-bar blues · A7 · Shuffle groove · Walking bass (low oct) + chord stabs · Turnaround',
     bpm: 90,
     timeSig: '4/4',
     instrument: 'piano',
@@ -208,121 +228,137 @@ function makeBluesTrack() {
   };
 }
 
-// ─── Track 4: Pop Grid — Let It Be (The Beatles) ──────────────────────────────
-// Key of C major, 4/4. 16-cell grid with split cells for variety.
-// Classic I–V–vi–IV progression across multiple sections.
-// Verse:   C – G – Am – Fmaj  (×2, bars 1-8)
-// Pre-Ch:  C – C/E – Fmaj – C  (bars 9-12, split on cell 2)
-// Chorus:  Fmaj – G – C – Am  |  Fmaj – G – Am (split C/G) – C  (bars 13-16)
+// ─── Track 5: Pressure Drop — Toots and the Maytals ─────────────────────────
+// Key of A major, 4/4, 97 BPM, straight groove. Rockers style.
+//
+// Rockers reggae is defined by its driving forward momentum:
+//   - Kick on every beat (four-on-the-floor feel) unlike the hollow one-drop
+//   - Snare on beats 2 & 4 (not just beat 3) for a punchier backbeat
+//   - Faster tempo than roots reggae
+//
+// Chord pattern: builtin-reggae (4×4n) — same skank shape:
+//   beat 1: bass root staccato  — anchor
+//   beat 2: chord stab staccato — skank
+//   beat 3: rest
+//   beat 4: chord stab staccato — skank
+//
+// Song structure:
+//   Verse:  A · A · D · A  (4 bars — "It was a pressure drop…")
+//   Chorus: A · D · E · A  (4 bars — "pressure drop, oh pressure…")
+//
+// Drum pattern — rockers style:
+//   16-step grid (16th notes). Indexing: 0=beat1, 4=beat2, 8=beat3, 12=beat4.
+//
+//   HH (closed): every 8th note (steps 0,2,4,6,8,10,12,14).
+//                Downbeats slightly accented, offbeats lighter.
+//   Snare:       beats 2 & 4 (steps 4, 12) — the backbeat drive.
+//                Ghost hit on and-of-3 (step 10) adds rockers propulsion.
+//   Kick:        all four beats (steps 0, 4, 8, 12) — the defining rockers
+//                four-on-the-floor, plus and-of-4 (step 14) pickup anticipation.
+//   Rim (skank): offbeats of beats 2 & 4 (steps 6, 14) — locks the upstroke
+//                accent with the chord skank for the characteristic scratch feel.
 
-function makeLetItBeTrack() {
-  const p1id = 'demo-lib-verse';
-  const p2id = 'demo-lib-prechorus';
-  const p3id = 'demo-lib-chorus';
+function makeReggaeTrack() {
+  const p1id = 'demo-reggae-verse';
+  const p2id = 'demo-reggae-chorus';
+  const drumId = 'drum-demo-reggae';
 
+  // Verse — A · A · D · A  ("It was a pressure drop, oh pressure")
   const verse = prog(p1id, 'Verse', [
-    cell(`${p1id}-0`, 'C', 'maj'),
-    cell(`${p1id}-1`, 'G', 'maj'),
-    cell(`${p1id}-2`, 'A', 'min'),
-    cell(`${p1id}-3`, 'F', 'maj'),
-  ], 'C', 'ionian', 'whole', null, null, null);
+    cell(`${p1id}-0`, 'A', 'maj'),
+    cell(`${p1id}-1`, 'A', 'maj'),
+    cell(`${p1id}-2`, 'D', 'maj'),
+    cell(`${p1id}-3`, 'A', 'maj'),
+  ], 'A', 'ionian', 'whole', 'builtin-reggae', '4n', false);
 
-  // 8-cell pre-chorus with a split cell (C then G in bar 4)
-  const preChorus = prog(p2id, 'Pre-Chorus', [
-    cell(`${p2id}-0`, 'C', 'maj'),
-    cell(`${p2id}-1`, 'G', 'maj'),
-    splitCell(`${p2id}-2`, 'A', 'min', 'F', 'maj'),
-    cell(`${p2id}-3`, 'C', 'maj'),
-    cell(`${p2id}-4`, 'F', 'maj'),
-    cell(`${p2id}-5`, 'G', 'maj'),
-    cell(`${p2id}-6`, 'A', 'min'),
-    cell(`${p2id}-7`, 'F', 'maj'),
-  ], 'C', 'ionian', 'whole', null, null, null);
+  // Chorus — A · D · E · A  (I–IV–V–I turnaround)
+  const chorus = prog(p2id, 'Chorus', [
+    cell(`${p2id}-0`, 'A', 'maj'),
+    cell(`${p2id}-1`, 'D', 'maj'),
+    cell(`${p2id}-2`, 'E', 'maj'),
+    cell(`${p2id}-3`, 'A', 'maj'),
+  ], 'A', 'ionian', 'whole', 'builtin-reggae', '4n', false);
 
-  // 8-cell chorus — split turnaround on cell 14
-  const chorus = prog(p3id, 'Chorus', [
-    cell(`${p3id}-0`, 'F', 'maj'),
-    cell(`${p3id}-1`, 'C', 'maj'),
-    cell(`${p3id}-2`, 'G', 'maj'),
-    cell(`${p3id}-3`, 'A', 'min'),
-    cell(`${p3id}-4`, 'F', 'maj'),
-    cell(`${p3id}-5`, 'C', 'maj'),
-    splitCell(`${p3id}-6`, 'G', 'maj', 'F', 'maj'),
-    cell(`${p3id}-7`, 'C', 'maj'),
-  ], 'C', 'ionian', 'whole', null, null, null);
+  // ── Rockers drum pattern ──────────────────────────────────────────────────
+  // 16-step grid (16th notes). Indexing: 0=beat1, 4=beat2, 8=beat3, 12=beat4.
+  //
+  //   HH:    every 8th note — downbeats orange/medium (0.7), upbeats red/high (1.0)
+  //   Snare: beats 2 & 4 only (steps 4, 12) — high vel (1.0)
+  //   Kick:  all 4 beats, beat 3 hardest — 0=0.7, 4=0.7, 8=1.0, 12=0.7
+  //   Rim:   all off
 
-  return {
-    trackName: 'Let It Be — The Beatles',
-    trackDescription: 'Key of C major · I–V–vi–IV · Verse / Pre-Chorus / Chorus · 16-cell grid',
-    bpm: 75,
-    timeSig: '4/4',
-    instrument: 'piano',
-    groove: 'straight',
-    progressions: { [p1id]: verse, [p2id]: preChorus, [p3id]: chorus },
-    progressionOrder: [p1id, p2id, p3id],
-    activeProgressionId: p1id,
-    activeView: 'track',
-    track: [
-      { progressionId: p1id, repetitions: 4 },
-      { progressionId: p2id, repetitions: 1 },
-      { progressionId: p3id, repetitions: 2 },
+  const rockersDrum = {
+    id: drumId,
+    name: 'Rockers',
+    rows: [
+      {
+        rowId: 'hh',
+        label: 'HH',
+        sample: 'hh-closed',
+        volume: 75,
+        reverb: 12,
+        // downbeats medium (0.7 = orange), upbeats high (1.0 = red)
+        steps: Array.from({ length: 16 }, (_, i) => ({
+          on:  i % 2 === 0,
+          vel: i % 4 === 0 ? 0.7 : 1.0,
+        })),
+      },
+      {
+        rowId: 'snare',
+        label: 'Snare',
+        sample: 'snare-kit8',
+        volume: 88,
+        reverb: 20,
+        // backbeat: beats 2 & 4 only, full velocity
+        steps: Array.from({ length: 16 }, (_, i) => ({ on: i === 4 || i === 12, vel: 1.0 })),
+      },
+      {
+        rowId: 'bd',
+        label: 'BD',
+        sample: 'kick',
+        volume: 93,
+        reverb: 8,
+        // quarter notes: beat 3 hardest (1.0 = red), others medium (0.7 = orange)
+        steps: Array.from({ length: 16 }, (_, i) => ({
+          on:  i % 4 === 0,
+          vel: i === 8 ? 1.0 : 0.7,
+        })),
+      },
+      {
+        rowId: 'custom',
+        label: 'Rim',
+        sample: 'snare-rim',
+        volume: 65,
+        reverb: 12,
+        // all off
+        steps: Array.from({ length: 16 }, () => ({ on: false, vel: 1.0 })),
+      },
     ],
-    scaleRoot: 'C',
-    scaleKey: 'ionian',
   };
-}
-
-// ─── Track 5: U-Turn (Lili) — Aaron ──────────────────────────────────────────
-// Key of E minor, 4/4. Repeating 4-chord loop: Em – C – G – D.
-// Scale: E natural minor (Aeolian). i – VI – III – VII.
-// Verse and chorus share the same progression; the bridge adds a pre-chorus
-// extension: Am – B7 – Em – Em.
-// Drum pattern: Rock 2 (driving 8th-note hi-hat).
-
-function makeUTurnTrack() {
-  const p1id = 'demo-uturn-verse';
-  const p2id = 'demo-uturn-bridge';
-
-  // The iconic 4-bar loop, repeated for verse and chorus
-  const verse = prog(p1id, 'Verse / Chorus', [
-    cell(`${p1id}-0`, 'E', 'min'),
-    cell(`${p1id}-1`, 'C', 'maj'),
-    cell(`${p1id}-2`, 'G', 'maj'),
-    cell(`${p1id}-3`, 'D', 'maj'),
-  ], 'E', 'aeolian', 'whole', null, null, null);
-
-  // Bridge: Am – B7 – Em – Em (adds tension before returning to the loop)
-  const bridge = prog(p2id, 'Bridge', [
-    cell(`${p2id}-0`, 'A', 'min'),
-    cell(`${p2id}-1`, 'A', 'min'),
-    cell(`${p2id}-2`, 'B', 'dom7'),
-    cell(`${p2id}-3`, 'B', 'dom7'),
-    splitCell(`${p2id}-4`, 'E', 'min', 'D', 'maj'),
-    cell(`${p2id}-5`, 'C', 'maj'),
-    cell(`${p2id}-6`, 'G', 'maj'),
-    cell(`${p2id}-7`, 'D', 'maj'),
-  ], 'E', 'aeolian', 'whole', null, null, null);
 
   return {
-    trackName: 'U-Turn (Lili) — Aaron',
-    trackDescription: 'E minor · i–VI–III–VII loop · Verse / Bridge · Drum sequencer enabled',
-    bpm: 110,
+    trackName: 'Pressure Drop — Toots & the Maytals',
+    trackDescription: 'A major · A–D–E · Rockers reggae · Quarter-note kick · Upbeat hi-hat · Skank chords',
+    bpm: 180,
     timeSig: '4/4',
     instrument: 'piano',
     groove: 'straight',
-    metronome: { drumEnabled: false },
-    activeDrumPatternId: 'drum-builtin-rock3',
-    progressions: { [p1id]: verse, [p2id]: bridge },
+    metronome: { drumEnabled: true },
+    drumPatterns: { [drumId]: rockersDrum },
+    drumPatternOrder: [drumId],
+    activeDrumPatternId: drumId,
+    progressions: { [p1id]: verse, [p2id]: chorus },
     progressionOrder: [p1id, p2id],
     activeProgressionId: p1id,
     activeView: 'track',
     track: [
-      { progressionId: p1id, repetitions: 2 },
-      { progressionId: p2id, repetitions: 1, drumPatternId: 'drum-builtin-rock3' },
-      { progressionId: p1id, repetitions: 2, drumPatternId: 'drum-builtin-rock3' },
+      { progressionId: p1id, repetitions: 2, drumPatternId: drumId },
+      { progressionId: p2id, repetitions: 2, drumPatternId: drumId },
+      { progressionId: p1id, repetitions: 2, drumPatternId: drumId },
+      { progressionId: p2id, repetitions: 2, drumPatternId: drumId },
     ],
-    scaleRoot: 'E',
-    scaleKey: 'aeolian',
+    scaleRoot: 'A',
+    scaleKey: 'ionian',
   };
 }
 
@@ -362,6 +398,7 @@ function makeMistyTrack() {
   const OCT = 3; // one octave lower than default (4)
 
   // A section — bars 1-8
+  // A section: jazz comp (bass on 1, chord on 2 & 4) — Garner's stride-lite feel.
   const sectionA = prog(p1id, 'A section', [
     cell(`${p1id}-0`, 'D#', 'maj7',  0, OCT),
     cell(`${p1id}-1`, 'A#', 'dom7',  0, OCT),
@@ -371,9 +408,9 @@ function makeMistyTrack() {
     cell(`${p1id}-5`, 'C#', 'dom7',  0, OCT),
     splitCell(`${p1id}-6`, 'F', 'min7', 'A#', 'dom7', 0, 0, OCT),
     splitCell(`${p1id}-7`, 'D#', 'maj7', 'C#', 'dom7', 0, 0, OCT),
-  ], 'D#', 'ionian', 'whole', 'builtin-buckley', '8n', null);
+  ], 'D#', 'ionian', 'whole', 'builtin-jazz-arp-comp', '8n', false);
 
-  // B section (bridge) — bars 17-24
+  // B section (bridge) — bars 17-24. Half-bar cells: Buckley arp fits the walking feel.
   const sectionB = prog(p2id, 'B section (Bridge)', [
     splitCell(`${p2id}-0`, 'G', 'min7', 'C', 'dom7', 0, 0, OCT),
     cell(`${p2id}-1`, 'F', 'maj7',  0, OCT),
@@ -383,9 +420,9 @@ function makeMistyTrack() {
     cell(`${p2id}-5`, 'G#', 'maj7',  0, OCT),
     splitCell(`${p2id}-6`, 'C', 'min7', 'F', 'dom7', 0, 0, OCT),
     splitCell(`${p2id}-7`, 'A#', 'maj7', 'G', 'dom7', 0, 0, OCT),
-  ], 'D#', 'ionian', 'half', 'builtin-buckley', '8n', null);
+  ], 'D#', 'ionian', 'half', 'builtin-buckley', '8n', false);
 
-  // A' section — bars 25-32 (final A, ending on tonic)
+  // A' section — jazz comp again, resolves to tonic.
   const sectionAprime = prog(p3id, "A' section", [
     cell(`${p3id}-0`, 'D#', 'maj7',  0, OCT),
     cell(`${p3id}-1`, 'A#', 'dom7',  0, OCT),
@@ -395,7 +432,7 @@ function makeMistyTrack() {
     cell(`${p3id}-5`, 'C#', 'dom7',  0, OCT),
     splitCell(`${p3id}-6`, 'F', 'min7', 'A#', 'dom7', 0, 0, OCT),
     cell(`${p3id}-7`, 'D#', 'maj7',  0, OCT),
-  ], 'D#', 'ionian', 'whole', 'builtin-buckley', '8n', null);
+  ], 'D#', 'ionian', 'whole', 'builtin-jazz-arp-comp', '8n', false);
 
   return {
     trackName: 'Misty — Erroll Garner',
@@ -481,6 +518,18 @@ export const DEMO_TRACKS = [
     build: makeBachTrack,
   },
   {
+    id: 'demo-pachelbel',
+    label: '🎻 Canon in D — Pachelbel',
+    labelFr: '🎻 Canon en Ré — Pachelbel',
+    build: makePachelbelTrack,
+  },
+  {
+    id: 'demo-misty',
+    label: '🎷 Misty — Erroll Garner',
+    labelFr: '🎷 Misty — Erroll Garner',
+    build: makeMistyTrack,
+  },
+  {
     id: 'demo-hallelujah',
     label: '🕊 Hallelujah — Leonard Cohen',
     labelFr: '🕊 Hallelujah — Leonard Cohen',
@@ -493,27 +542,9 @@ export const DEMO_TRACKS = [
     build: makeBluesTrack,
   },
   {
-    id: 'demo-letitbe',
-    label: '🎵 Let It Be — The Beatles',
-    labelFr: '🎵 Let It Be — The Beatles',
-    build: makeLetItBeTrack,
-  },
-  {
-    id: 'demo-uturn',
-    label: '🥁 U-Turn (Lili) — Aaron',
-    labelFr: '🥁 U-Turn (Lili) — Aaron',
-    build: makeUTurnTrack,
-  },
-  {
-    id: 'demo-misty',
-    label: '🎷 Misty — Erroll Garner',
-    labelFr: '🎷 Misty — Erroll Garner',
-    build: makeMistyTrack,
-  },
-  {
-    id: 'demo-pachelbel',
-    label: '🎻 Canon in D — Pachelbel',
-    labelFr: '🎻 Canon en Ré — Pachelbel',
-    build: makePachelbelTrack,
+    id: 'demo-reggae',
+    label: '🎵 Pressure Drop — Toots & the Maytals',
+    labelFr: '🎵 Pressure Drop — Toots & the Maytals',
+    build: makeReggaeTrack,
   },
 ];

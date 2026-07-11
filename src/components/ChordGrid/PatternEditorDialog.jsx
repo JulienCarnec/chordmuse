@@ -21,16 +21,16 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAppState } from '../../state/AppContext';
 import { usePlayback } from '../Playback/usePlayback';
 import { noteRows, makeEmptyGrid, gridToPatternString } from '../../theory/pattern';
-import { useT } from '../../i18n/index';
+import { useT, useLocale } from '../../i18n/index';
 import styles from './PatternEditorDialog.module.css';
 
 // Note value options (durations per step)
 export const NOTE_VALUE_OPTIONS = [
-  { value: '1n',  label: '𝅝 Ronde / Whole',   symbol: '𝅝' },
-  { value: '2n',  label: '𝅗𝅥 Blanche / Half',  symbol: '𝅗𝅥' },
-  { value: '4n',  label: '♩ Noire / Quarter',  symbol: '♩' },
-  { value: '8n',  label: '♪ Croche / 8th',     symbol: '♪' },
-  { value: '16n', label: '♬ Double croche / 16th', symbol: '♬' },
+  { value: '1n',  en: 'Whole',        fr: 'Ronde',        symbol: '𝅝' },
+  { value: '2n',  en: 'Half',         fr: 'Blanche',      symbol: '𝅗𝅥' },
+  { value: '4n',  en: 'Quarter',      fr: 'Noire',        symbol: '♩' },
+  { value: '8n',  en: '8th',          fr: 'Croche',       symbol: '♪' },
+  { value: '16n', en: '16th',         fr: 'Double croche',symbol: '♬' },
 ];
 
 function noteValueSymbol(nv) {
@@ -79,6 +79,7 @@ function makeColumns(pattern) {
 // ─── Column header with inline duration picker ────────────────────────────────
 
 function ColHeader({ nv, canDelete, onChangeNv, onDelete }) {
+  const { locale } = useLocale();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -99,7 +100,7 @@ function ColHeader({ nv, canDelete, onChangeNv, onDelete }) {
         <button
           className={styles.colDurBtn}
           onClick={() => setOpen(o => !o)}
-          title={NOTE_VALUE_OPTIONS.find(o => o.value === nv)?.label ?? nv}
+          title={(() => { const o = NOTE_VALUE_OPTIONS.find(o => o.value === nv); return o ? `${o.symbol} ${o[locale] ?? o.en}` : nv; })()}
         >
           {noteValueSymbol(nv)}
         </button>
@@ -116,14 +117,14 @@ function ColHeader({ nv, canDelete, onChangeNv, onDelete }) {
         {/* Inline dropdown */}
         {open && (
           <div className={styles.colPickerDropdown}>
-            {NOTE_VALUE_OPTIONS.map(({ value, label, symbol }) => (
+            {NOTE_VALUE_OPTIONS.map(({ value, en, fr, symbol }) => (
               <button
                 key={value}
                 className={`${styles.colPickerItem} ${value === nv ? styles.colPickerItemActive : ''}`}
                 onClick={() => { onChangeNv(value); setOpen(false); }}
               >
                 <span className={styles.colPickerSymbol}>{symbol}</span>
-                <span className={styles.colPickerLabel}>{label}</span>
+                <span className={styles.colPickerLabel}>{locale === 'fr' ? fr : en}</span>
               </button>
             ))}
           </div>
@@ -172,7 +173,10 @@ function SubPatternGrid({ noteCount, grid, columns, readOnly, onCellToggle, onCh
         </thead>
         <tbody>
           {rows.map((row, ri) => {
-            const label = `${row.letter}${row.octave}`;
+            const DEGREE_NAMES = { a: 'Root', b: '3rd', c: '5th', d: '7th', e: '9th' };
+            const degName = DEGREE_NAMES[row.letter] ?? row.letter;
+            const octLabel = row.octave === 2 ? ' ↑' : row.octave === 0 ? ' ↓' : '';
+            const label = `${degName}${octLabel}`;
             const isOctaveBoundary = ri > 0 && ri % noteCount === 0;
             return (
               <tr key={ri} className={isOctaveBoundary ? styles.octaveBoundary : ''}>
@@ -307,6 +311,58 @@ export function PatternEditorDialog({ chord, initialPattern, readOnly = false, o
 
   useEffect(() => () => stop(), [stop]);
 
+  /** Deep-clone subPatterns so the saved object shares no array references with state. */
+  function cloneSubPatterns(sp) {
+    const out = {};
+    for (const nc of NOTE_COUNTS) {
+      out[nc] = (sp[nc] ?? []).map(col => [...col]);
+    }
+    return out;
+  }
+
+  /**
+   * For any note-count sub-pattern that is entirely empty (all 'off'), copy
+   * the content from the actively-edited sub-pattern by mapping shared rows
+   * (same letter + octave). This ensures a pattern edited only on the "3 notes"
+   * tab still plays correctly on 4- and 5-note chords.
+   */
+  function fillEmptySubPatterns(sp) {
+    const srcNc = activeNoteCount;
+    const srcGrid = sp[srcNc];
+    if (!srcGrid) return sp;
+
+    const srcRows = noteRows(srcNc);
+    const out = { ...sp };
+
+    for (const nc of NOTE_COUNTS) {
+      if (nc === srcNc) continue;
+      const grid = sp[nc];
+      // Check if this sub-pattern is entirely empty (all 'off')
+      const isEmpty = !grid || grid.every(col => col.every(cell => cell === 'off'));
+      if (!isEmpty) continue;
+
+      // Build a lookup: "letter-octave" → rowIndex for the target noteCount
+      const tgtRows = noteRows(nc);
+      const tgtIdx = {};
+      tgtRows.forEach((row, i) => { tgtIdx[`${row.letter}-${row.octave}`] = i; });
+
+      // Copy from source grid, remapping row indices
+      const numCols = srcGrid.length;
+      const newGrid = Array.from({ length: numCols }, () => Array(nc * 3).fill('off'));
+      for (let ci = 0; ci < numCols; ci++) {
+        for (let ri = 0; ri < srcRows.length; ri++) {
+          const cell = srcGrid[ci]?.[ri];
+          if (!cell || cell === 'off') continue;
+          const { letter, octave } = srcRows[ri];
+          const tgtRi = tgtIdx[`${letter}-${octave}`];
+          if (tgtRi !== undefined) newGrid[ci][tgtRi] = cell;
+        }
+      }
+      out[nc] = newGrid;
+    }
+    return out;
+  }
+
   // ── Save (edit mode) ──────────────────────────────────────────────────────
   function handleSave() {
     if (!patternName.trim()) return;
@@ -315,8 +371,8 @@ export function PatternEditorDialog({ chord, initialPattern, readOnly = false, o
       id: existing ? existing.id : `custom-${Date.now()}`,
       name: patternName.trim(),
       loop,
-      columns,
-      subPatterns,
+      columns: [...columns],
+      subPatterns: cloneSubPatterns(fillEmptySubPatterns(subPatterns)),
     };
     dispatch({ type: 'SAVE_PATTERN', pattern: saved });
     onApply?.(saved.id);
@@ -330,8 +386,8 @@ export function PatternEditorDialog({ chord, initialPattern, readOnly = false, o
       id: `custom-${Date.now()}`,
       name: duplicateName.trim(),
       loop,
-      columns,
-      subPatterns,
+      columns: [...columns],
+      subPatterns: cloneSubPatterns(fillEmptySubPatterns(subPatterns)),
     };
     dispatch({ type: 'SAVE_PATTERN', pattern: copy });
     onApply?.(copy.id);

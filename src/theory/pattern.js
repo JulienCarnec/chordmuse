@@ -232,6 +232,7 @@ export function buildEventsFromPattern(
   patternSrc, voicedNotes, noteValue, cellDur, loop,
   humanize, humanVel, humanJitter,
   groove = 'straight',
+  patternTimeOffset = 0, // seconds already consumed by a previous sibling (e.g. first half of a split cell)
 ) {
   const steps = parsePattern(patternSrc);
   const stepSec = Tone.Time(noteValue).toSeconds();
@@ -248,8 +249,16 @@ export function buildEventsFromPattern(
     return `${m[1]}${targetOct}`;
   }
 
-  let t = 0;
+  // Fast-forward through steps already consumed by the offset without emitting events
   let si = 0;
+  let tFwd = 0;
+  while (tFwd + stepSec <= patternTimeOffset - 0.001) {
+    if (!loop && si >= steps.length) break;
+    tFwd += stepSec;
+    si++;
+  }
+
+  let t = 0; // time relative to the start of this segment (emitted event times)
 
   while (t < cellDur - 0.001) {
     const step = steps[si % steps.length];
