@@ -6,6 +6,7 @@ import { useSampler } from '../../audio/useSampler';
 import { Knob } from '../Playback/Knob';
 import { saveProject } from '../../utils/persistence';
 import { exportMidi } from '../../utils/midiExport';
+import { DEMO_TRACKS } from '../../utils/demoTracks';
 import { useT, useLocale } from '../../i18n/index';
 import styles from './TopBar.module.css';
 
@@ -39,7 +40,7 @@ const INSTRUMENTS = [
 
 export function TopBar({ onLoad }) {
   const t = useT();
-  const { toggleLocale } = useLocale();
+  const { locale, toggleLocale } = useLocale();
   const { state, dispatch } = useAppState();
   const { play, stop, pause, resume, updateLiveParams, updateLiveInstrument, reschedule, updateDrumRows } = usePlayback();
   const { setReverbWet } = useSampler();
@@ -47,6 +48,8 @@ export function TopBar({ onLoad }) {
   const [humanize,    setHumanize]    = useState(50);
   const [maxVelocity, setMaxVelocity] = useState(80);
   const [reverbPct,   setReverbPct]   = useState(50);
+  const [demoOpen,    setDemoOpen]    = useState(false);
+  const [pendingDemo, setPendingDemo] = useState(null); // { id, build, label }
 
   // Keep liveParams in sync with knobs at all times (including on first render).
   const {
@@ -106,7 +109,7 @@ export function TopBar({ onLoad }) {
       play({
         cells: prog.cells.map(cell => ({ ...cell, _cellDuration: prog.cellDuration ?? 'whole' })),
         progressionId: prog.id,
-        bpm, timeSig, instrument,
+        bpm, timeSig, instrument, groove,
         humanize: humanize / 100,
         drumRows: activeDrumRows,
         loop: true,
@@ -185,7 +188,7 @@ export function TopBar({ onLoad }) {
       play({
         cells: allCells,
         progressionId: firstProgId,
-        bpm, timeSig, instrument,
+        bpm, timeSig, instrument, groove,
         humanize: humanize / 100,
         drumRows: hasAnyDrum ? (drumSchedule[0]?.rows ?? null) : null,
         drumSchedule: hasAnyDrum ? drumSchedule : undefined,
@@ -233,17 +236,15 @@ export function TopBar({ onLoad }) {
 
         {/* BPM */}
         <div className={styles.bpmGroup}>
-          <button className={styles.bpmBtn} title={t.bpmDecTitle} onClick={() => adjustBpm(-1)}>−</button>
           <input
             type="number"
             className={styles.bpmInput}
             value={bpm}
-            min={20} max={300}
+            min={0} max={1000}
             title={t.bpmTitle}
             onChange={e => adjustBpm(Number(e.target.value) - bpm)}
           />
           <span className={styles.bpmLabel}>{t.bpm}</span>
-          <button className={styles.bpmBtn} title={t.bpmIncTitle} onClick={() => adjustBpm(1)}>+</button>
         </div>
 
         {/* Time signature */}
@@ -317,6 +318,39 @@ export function TopBar({ onLoad }) {
 
       {/* Right: file actions + language toggle + close button */}
       <div className={styles.right}>
+        {/* Demo tracks dropdown */}
+        <div className={styles.demoWrapper}>
+          <button
+            className={styles.demoBtn}
+            title={t.demoBtnTitle}
+            onClick={() => setDemoOpen(o => !o)}
+          >
+            {t.demoBtn} ▾
+          </button>
+          {demoOpen && (
+            <ul className={styles.demoMenu} role="menu">
+              {DEMO_TRACKS.map(demo => (
+                <li key={demo.id} role="menuitem">
+                  <button
+                    className={styles.demoMenuItem}
+                    onClick={() => {
+                      setDemoOpen(false);
+                      const hasGrids = Object.keys(state.progressions).length > 0;
+                      if (hasGrids) {
+                        setPendingDemo(demo);
+                      } else {
+                        loadDemo(demo);
+                      }
+                    }}
+                  >
+                    {locale === 'fr' ? demo.labelFr : demo.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <button className={styles.langBtn} onClick={toggleLocale} title="Switch language / Changer de langue">
           {t.languageLabel}
         </button>
@@ -335,6 +369,29 @@ export function TopBar({ onLoad }) {
           onChange={onLoad}
         />
       </div>
+
+      {/* Confirmation dialog for loading a demo over an existing project */}
+      {pendingDemo && (
+        <div className={styles.demoOverlay} role="dialog" aria-modal="true" aria-labelledby="demo-confirm-title">
+          <div className={styles.demoDialog}>
+            <p id="demo-confirm-title" className={styles.demoDialogTitle}>{t.demoConfirmTitle}</p>
+            <p className={styles.demoDialogMsg}>{t.demoConfirmMsg}</p>
+            <div className={styles.demoDialogActions}>
+              <button className={styles.demoDialogCancel} onClick={() => setPendingDemo(null)}>
+                {t.cancelBtn}
+              </button>
+              <button className={styles.demoDialogOk} onClick={() => { loadDemo(pendingDemo); setPendingDemo(null); }}>
+                {t.demoConfirmOk}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
+
+  function loadDemo(demo) {
+    stop();
+    dispatch({ type: 'LOAD_PROJECT', project: demo.build() });
+  }
 }

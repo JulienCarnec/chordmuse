@@ -21,42 +21,42 @@ export const INITIAL_STATE = {
     {
       id: 'builtin-block',
       name: 'Block chord',
-      pattern: '{[a1,b1,c1]}',
+      pattern: '{[a1,b1,c1,d1,e1]}',
       noteValue: '4n',
       loop: true,
     },
     {
       id: 'builtin-strum-on',
       name: 'On-beat strum',
-      pattern: '{[a1,b1,c1],[a1,b1,c1],[a1,b1,c1],[a1,b1,c1]}',
+      pattern: '{[a1,b1,c1,d1,e1],[a1,b1,c1,d1,e1],[a1,b1,c1,d1,e1],[a1,b1,c1,d1,e1]}',
       noteValue: '4n',
       loop: false,
     },
     {
       id: 'builtin-strum-off',
       name: 'Off-beat strum',
-      pattern: '{,[a1,b1,c1],[a1,b1,c1],[a1,b1,c1],[a1,b1,c1]}',
+      pattern: '{,[a1,b1,c1,d1,e1],[a1,b1,c1,d1,e1],[a1,b1,c1,d1,e1],[a1,b1,c1,d1,e1]}',
       noteValue: '4n',
       loop: false,
     },
     {
       id: 'builtin-strum-folk',
       name: 'Folk strum (D-DU-DU)',
-      pattern: '{[a1,b1,c1],,[a1,b1,c1],[a1,b1,c1],,[a1,b1,c1],[a1,b1,c1]}',
+      pattern: '{[a1,b1,c1,d1,e1],,[a1,b1,c1,d1,e1],[a1,b1,c1,d1,e1],,[a1,b1,c1,d1,e1],[a1,b1,c1,d1,e1]}',
       noteValue: '8n',
       loop: false,
     },
     {
       id: 'builtin-strum-staccato',
       name: 'Staccato chops',
-      pattern: '{[a1,b1,c1].,[a1,b1,c1].,[a1,b1,c1].,[a1,b1,c1].}',
+      pattern: '{[a1,b1,c1,d1,e1].,[a1,b1,c1,d1,e1].,[a1,b1,c1,d1,e1].,[a1,b1,c1,d1,e1].}',
       noteValue: '4n',
       loop: false,
     },
     {
       id: 'builtin-reggae',
       name: 'Reggae off-beat',
-      pattern: '{a0,[a1,b1,c1].,,[a1,b1,c1].}',
+      pattern: '{a0,[a1,b1,c1,d1,e1].,,[a1,b1,c1,d1,e1].}',
       noteValue: '4n',
       loop: false,
     },
@@ -122,30 +122,38 @@ export const INITIAL_STATE = {
     {
       id: 'builtin-bach',
       name: 'Bach prelude',
-      pattern: '{a0,c0,a1,b1,c1,a1,b1,c1}',
+      pattern: '{a0,c0,a1,b1,[c1,d1],a1,b1,[c1,d1]}',
       noteValue: '8n',
       loop: true,
     },
     {
       id: 'builtin-bass-burst',
       name: 'Bass + arp burst',
-      pattern: '{a0,[b1,c1],a1,c1,a1,[b1,c1]}',
+      pattern: '{a0,[b1,c1,d1,e1],a1,c1,a1,[b1,c1,d1,e1]}',
       noteValue: '8n',
       loop: true,
     },
     {
       id: 'builtin-pickup',
       name: 'Staccato pick-up',
-      pattern: '{a1.,b1.,c1.,[a1,b1,c1]}',
+      pattern: '{a1.,b1.,c1.,[a1,b1,c1,d1,e1]}',
       noteValue: '8n',
       loop: false,
     },
     {
       id: 'builtin-alberti',
       name: 'Alberti bass',
-      pattern: '{[a0,c0],a1,[b1,c1],a1}',
+      pattern: '{[a0,c0],a1,[b1,c1,d1,e1],a1}',
       noteValue: '4n',
       loop: true,
+    },
+    {
+      id: 'builtin-albertibuckley',
+      name: 'Buckley',
+      pattern: '{[a0,c0],a1,b1,[c1,d1],b1,c1}',
+      noteValue: '4n',
+      loop: true,
+      
     },
     // ── 7th-chord figures ────────────────────────────────────────────────────
     {
@@ -204,6 +212,22 @@ export const INITIAL_STATE = {
         { rowId: 'custom', label: 'Perc',  sample: 'clap',       volume: 70, reverb: 15, steps: Array.from({length:16},()=>({ on:false, vel:1.0 })) },
       ],
     },
+    'drum-builtin-rock3': {
+      id: 'drum-builtin-rock3',
+      name: 'Rock 3',
+      rows: [
+        // HH on steps 0,2,4,6,8,10,12,14 — velocity fades across each group of 4:
+        //   beat downbeat (0,8) → 1.0, upbeat (4,12) → 0.7, off-beats → 0.45
+        { rowId: 'hh',    label: 'HH',   sample: 'hh-closed', volume: 80, reverb: 15, steps: (() => {
+          const HH_ON  = new Set([0, 2, 4, 6, 8, 10, 12, 14]);
+          const HH_VEL = { 0:1.0, 2:0.45, 4:0.7, 6:0.45, 8:1.0, 10:0.45, 12:0.7, 14:0.45 };
+          return Array.from({length:16}, (_,i) => ({ on: HH_ON.has(i), vel: HH_VEL[i] ?? 1.0 }));
+        })() },
+        { rowId: 'snare',  label: 'Snare', sample: 'snare-kit8', volume: 85, reverb: 20, steps: Array.from({length:16},(_,i)=>({ on:i===8, vel:1.0 })) },
+        { rowId: 'bd',     label: 'BD',    sample: 'kick',       volume: 90, reverb: 10, steps: Array.from({length:16},(_,i)=>({ on:i===0||i===12,  vel:1.0 })) },
+        { rowId: 'custom', label: 'Perc',  sample: 'clap',       volume: 70, reverb: 15, steps: Array.from({length:16},()=>({ on:false, vel:1.0 })) },
+      ],
+    },
     'drum-builtin-funk': {
       id: 'drum-builtin-funk',
       name: 'Funk',
@@ -235,7 +259,7 @@ export const INITIAL_STATE = {
       ],
     },
   },
-  drumPatternOrder: ['drum-builtin-rock','drum-builtin-rock2','drum-builtin-funk','drum-builtin-bossa','drum-builtin-hiphop'],
+  drumPatternOrder: ['drum-builtin-rock','drum-builtin-rock2','drum-builtin-rock3','drum-builtin-funk','drum-builtin-bossa','drum-builtin-hiphop'],
   // id of the drum pattern currently loaded in the editor panel (null = blank)
   activeDrumPatternId: 'drum-builtin-rock2',
 
@@ -245,7 +269,7 @@ export const INITIAL_STATE = {
   trackDescription: '',
 
   // Global pattern settings (saved with the project)
-  globalPlayStyle:   '{[a1,b1,c1]}',
+  globalPlayStyle:   '{[a1,b1,c1,d1,e1]}',
   globalNoteValue:   '4n',
   globalPatternLoop: true,
 

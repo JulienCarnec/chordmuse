@@ -87,17 +87,16 @@ function bassNoteName(chord, useFlat) {
   return displayNote(sharp, useFlat);
 }
 
-/** Label with optional slash notation for inversions: e.g. "C/E" */
-function cellLabel(chord, useFlat) {
+/** Label with optional slash notation for inversions: e.g. "Cmaj7/E" */
+function cellLabelParts(chord, useFlat) {
   // Custom (undetermined) chord — show the note list directly
   if (!chord.typeKey && chord.customNotes?.length) {
-    return chord.customNotes.join(', ');
+    return { base: chord.customNotes.join(', '), bass: null };
   }
   const base = chordLabelDisplay(chord.root, chord.typeKey, useFlat);
   const bass = bassNoteName(chord, useFlat);
   const displayRoot = displayNote(chord.root, useFlat);
-  if (bass && bass !== displayRoot) return `${base}/${bass}`;
-  return base;
+  return { base, bass: bass && bass !== displayRoot ? bass : null };
 }
 
 /**
@@ -293,10 +292,12 @@ export function ChordCell({
               {HIGHLIGHTED_ROLES.has(subRole) && <RoleInfoBubble role={subRole} />}
               <div className={styles.labelWrapper}>
                 {sc
-                  ? <span
-                      className={`${styles.label} ${styles.labelClickable}`}
-                      onClick={e => { e.stopPropagation(); setSubPickerOpen(isSubPickerOpen ? null : si); }}
-                    >{cellLabel(sc, useFlat)}</span>
+                  ? (() => { const { base, bass } = cellLabelParts(sc, useFlat); return (
+                      <span
+                        className={`${styles.label} ${styles.labelClickable} ${bass ? styles.labelInverted : ''}`}
+                        onClick={e => { e.stopPropagation(); setSubPickerOpen(isSubPickerOpen ? null : si); }}
+                      >{base}{bass && `/${bass}`}</span>
+                    ); })()
                   : <span
                       className={styles.empty}
                       onClick={e => { e.stopPropagation(); setSubPickerOpen(isSubPickerOpen ? null : si); }}
@@ -363,10 +364,12 @@ export function ChordCell({
       {HIGHLIGHTED_ROLES.has(r) && <RoleInfoBubble role={r} />}
       <div className={styles.labelWrapper}>
         {cell.chord
-          ? <span
-              className={`${styles.label} ${styles.labelClickable}`}
-              onClick={e => { e.stopPropagation(); setPickerOpen(p => !p); }}
-            >{cellLabel(cell.chord, useFlat)}</span>
+          ? (() => { const { base, bass } = cellLabelParts(cell.chord, useFlat); return (
+              <span
+                className={`${styles.label} ${styles.labelClickable}`}
+                onClick={e => { e.stopPropagation(); setPickerOpen(p => !p); }}
+              >{base}{bass && `/${bass}`}</span>
+            ); })()
           : <span
               className={styles.empty}
               onClick={e => { e.stopPropagation(); setPickerOpen(p => !p); }}

@@ -51,7 +51,7 @@ export function PlaybackBar() {
   }
 
   function adjustBpm(delta) {
-    const next = Math.min(300, Math.max(20, bpm + delta));
+    const next = Math.min(1000, Math.max(0, bpm + delta));
     dispatch({ type: 'SET_BPM', bpm: next });
     if (isPlaying || isPaused) Tone.getTransport().bpm.value = next;
   }
@@ -77,17 +77,15 @@ export function PlaybackBar() {
 
       {/* BPM */}
       <div className={styles.bpmGroup}>
-        <button className={styles.bpmBtn} title={t.bpmDecTitle} onClick={() => adjustBpm(-1)}>−</button>
         <input
           type="number"
           className={styles.bpmInput}
           value={bpm}
-          min={20} max={300}
+          min={0} max={1000}
           title={t.bpmTitle}
           onChange={e => adjustBpm(Number(e.target.value) - bpm)}
         />
         <span className={styles.bpmLabel}>{t.bpm}</span>
-        <button className={styles.bpmBtn} title={t.bpmIncTitle} onClick={() => adjustBpm(1)}>+</button>
       </div>
 
       {/* Three knobs */}

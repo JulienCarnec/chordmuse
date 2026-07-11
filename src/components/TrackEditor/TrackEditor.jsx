@@ -465,11 +465,6 @@ export function TrackEditor() {
             className={`${styles.visualiserToggleBtn} ${showGuitar ? styles.visualiserToggleActive : ''}`}
             onClick={() => setShowGuitar(p => !p)}
           >{t.showGuitar}</button>
-          <button
-            className={`${styles.visualiserToggleBtn} ${drumOpen ? styles.visualiserToggleActive : ''}`}
-            onClick={() => setDrumOpen(p => !p)}
-            title={drumOpen ? t.drumSeqCollapse : t.drumSeqExpand}
-          >🥁 {t.drumSeqTitle}</button>
         </div>
         {showPiano && (
           <PianoKeyboard

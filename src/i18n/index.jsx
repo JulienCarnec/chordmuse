@@ -337,6 +337,13 @@ const en = {
     { value: 'triangle-open',  label: 'Open Triangle'    },  // GM 81 — A4
   ],
 
+  // Demo tracks
+  demoBtn:               '🎵 Demo',
+  demoBtnTitle:          'Load a demo track',
+  demoConfirmTitle:      'Load demo track?',
+  demoConfirmMsg:        'Loading a demo will replace your current project. Unsaved changes will be lost.',
+  demoConfirmOk:         'Load demo',
+
   // Language toggle
   languageLabel:         'FR',
 };
@@ -581,12 +588,12 @@ const fr = {
   cellDurationQuarter:   '♩ Noire',
   cellDurationEighth:    '♪ Croche',
 
-  // Drum Séquenceur
+  // Boîte à rythme
   drumEnable:            'Activer le séquenceur',
   drumDisable:           'Désactiver le séquenceur',
   drumOnLabel:           'ON',
   drumOffLabel:          'OFF',
-  drumSeqTitle:          'Drum Séquenceur',
+  drumSeqTitle:          'Boîte à rythme',
   drumSeqCollapse:       'Réduire le séquenceur',
   drumSeqExpand:         'Agrandir le séquenceur',
   drumPresetLabel:       'Préréglage',
@@ -671,6 +678,13 @@ const fr = {
     { value: 'triangle-mute',  label: 'Triangle étouffé'    },  // GM 80
     { value: 'triangle-open',  label: 'Triangle ouvert'     },  // GM 81
   ],
+
+  // Demo tracks
+  demoBtn:               '🎵 Démo',
+  demoBtnTitle:          'Charger une piste de démonstration',
+  demoConfirmTitle:      'Charger la démo ?',
+  demoConfirmMsg:        'Charger une démo remplacera votre projet actuel. Les modifications non enregistrées seront perdues.',
+  demoConfirmOk:         'Charger la démo',
 
   // Language toggle
   languageLabel:         'EN',

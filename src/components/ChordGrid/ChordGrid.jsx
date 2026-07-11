@@ -6,7 +6,6 @@ import { PatternControls } from './PatternControls';
 import { ScaleSelector } from '../ScaleSelector/ScaleSelector';
 import { PianoKeyboard } from '../PianoKeyboard/PianoKeyboard';
 import { GuitarFretboard } from '../GuitarFretboard/GuitarFretboard';
-import { DrumSequencer } from '../DrumSequencer/DrumSequencer';
 import { useSampler } from '../../audio/useSampler';
 import { usePlayback } from '../Playback/usePlayback';
 import { getChordNotesVoiced, voiceChord, CHORD_TYPES, identifyChord } from '../../theory/chords';
@@ -35,7 +34,6 @@ export function ChordGrid() {
   const [selectedCellIndex, setSelectedCellIndex] = useState(null);
   const [showPiano, setShowPiano] = useState(true);
   const [showGuitar, setShowGuitar] = useState(false);
-  const [drumOpen, setDrumOpen] = useState(false);
   // Shared manual highlight: Set<string> of "note+octave" keyIds (e.g. "C4")
   // Piano highlights only the exact key; guitar derives pitch-class to highlight all frets.
   const [sharedHighlight, setSharedHighlight] = useState(new Set());
@@ -577,11 +575,6 @@ export function ChordGrid() {
 
       </div>{/* end .mainCol */}
 
-      {/* ── Drum sequencer: right edge of the outer row ─────── */}
-      <DrumSequencer
-        open={drumOpen}
-        onToggle={() => setDrumOpen(p => !p)}
-      />
     </div>
   );
 }

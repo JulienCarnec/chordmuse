@@ -207,6 +207,7 @@ export function usePlayback() {
     playStyle,
     noteValue,
     humanize = 0,
+    groove,
     drumRows,       // optional rows array for the initial/global drum pattern
     drumSchedule,   // optional [{ timeSec, rows }] — switch drum rows at each time boundary
     loop = true,
@@ -218,6 +219,7 @@ export function usePlayback() {
     if (playStyle  !== undefined) liveParams.playStyle.current  = playStyle;
     if (noteValue  !== undefined) liveParams.noteValue.current  = noteValue;
     if (timeSig    !== undefined) liveParams.timeSig.current    = timeSig;
+    if (groove     !== undefined) liveParams.groove.current     = groove;
     liveParams.humanize.current = humanize;
 
     const synth = await getSynth(instrument);
