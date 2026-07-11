@@ -13,7 +13,7 @@ import { createContext, useContext, useState } from 'react';
 
 const en = {
   // TopBar
-  appTitle:           'ChordCraft',
+  appTitle:           'Chordmuse',
   track:              'Track',
   bpm:                'BPM',
   bpmTitle:           'Tempo in beats per minute',
@@ -351,7 +351,7 @@ const en = {
 
 const fr = {
   // TopBar
-  appTitle:           'ChordCraft',
+  appTitle:           'Chordmuse',
   track:              'Piste',
   bpm:                'BPM',
   bpmTitle:           'Tempo en battements par minute',
