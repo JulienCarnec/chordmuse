@@ -1,16 +1,138 @@
-# React + Vite
+# 🎵 Chord Progressions Editor
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A personal React web app for composing, visualising, and playing back chord progressions. Build chord grids with scale-aware harmony highlighting, arrange them into a full track, and export to MIDI or PDF.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+### Chord Progression Editor
+- Create named chord grids (e.g. *Intro*, *Verse*, *Chorus*) with a configurable number of cells
+- Each cell holds a chord; cells can be **split into two sub-cells** for half-bar changes
+- **Scale selector** — major modes (Ionian → Locrian) and minor scales (natural, harmonic, melodic)
+- **Harmony colour coding** applied to every cell and the chord dropdown:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+  | Colour | Meaning |
+  |--------|---------|
+  | 🟢 Green  | Fits in the active scale |
+  | 🟡 Yellow | Dominant of degree I (V) |
+  | 🟠 Orange | Secondary dominant (dom. of II) |
+  | 🔵 Blue   | Subdominant of degree I (IV) |
+  | 🟣 Purple | Subdominant of degree II |
 
-## Expanding the Oxlint configuration
+- **Transposition** — shift the entire grid and scale by any number of semitones
+- **Drag-and-drop** cells to reorder within the grid (Ctrl-drag to copy)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+### Track Arranger
+- Sequence progressions in any order with a configurable **repeat count** per section
+- Live **playback cursor** that highlights the active chord in the mini-grid during playback
+- Inline track name and description fields
+
+### Playback Engine
+- **BPM** control and **time signatures**: 4/4, 3/4, 6/8, 2/4, 5/4, 7/8, 12/8
+- **Groove modes**: straight, shuffle (triplet feel), swing
+- **Playing styles** — block chord, on-beat / off-beat strum, folk strum, arpeggio up/down, bass+chord, reggae, and more; fully custom patterns via a pattern editor
+- **23 instruments** — piano, e-piano, harpsichord, organ, synths, pad, strings, choir, guitars, bass, brass, woodwinds, percussion
+- **Knobs** for humanize, velocity, and reverb
+- **Metronome** with a simple click mode or a full drum-sequencer mode (hi-hat, snare, kick, perc)
+
+### Piano Keyboard & Guitar Fretboard
+- Visual 2-octave piano highlights scale notes and chord notes
+- Click any key to play it; **Play Scale** button plays the scale ascending
+- Manual highlight mode identifies the chord name dynamically
+- Guitar fretboard shows the same note highlights across all strings
+
+### Persistence & Export
+- **Save / Load** — full project state as a `.json` file
+- **MIDI export** — full track as a `.mid` file
+- **PDF export** — formatted track sheet (name, description, BPM, time signature, chord grids per section) ready to print or save as PDF
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | [React 19](https://react.dev) + [Vite 8](https://vitejs.dev) |
+| Audio engine | [Tone.js 15](https://tonejs.github.io) |
+| MIDI export | [@tonejs/midi](https://github.com/Tonejs/Midi) |
+| Styling | CSS Modules |
+| Linting | [Oxlint](https://oxc.rs/docs/guide/usage/linter) |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org) **v18 or later** (v20 LTS recommended)
+- npm (comes with Node)
+
+### Install
+
+```bash
+git clone https://github.com/JulienCarnec/chords-progressions-editor.git
+cd chords-progressions-editor
+npm install
+```
+
+### Run in development
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173) in your browser. The app hot-reloads on every file save.
+
+### Build for production
+
+```bash
+npm run build
+```
+
+Output is written to `dist/`. Serve it with any static host or preview locally:
+
+```bash
+npm run preview
+```
+
+### Lint
+
+```bash
+npm run lint
+```
+
+---
+
+## Project Structure
+
+```
+src/
+├── audio/          # Tone.js sampler and drum sequencer hooks
+├── components/
+│   ├── ChordGrid/          # Grid editor, cells, pattern controls
+│   ├── DrumSequencer/      # Step-sequencer for drum patterns
+│   ├── GuitarFretboard/    # Fretboard visualiser
+│   ├── PianoKeyboard/      # Piano visualiser & interaction
+│   ├── Playback/           # Playback hook, knobs, playback bar
+│   ├── ProgressionManager/ # Sidebar progression list
+│   ├── ScaleSelector/      # Scale / key selector
+│   ├── TopBar/             # Header with transport controls & actions
+│   └── TrackEditor/        # Track arranger view
+├── i18n/           # EN / FR string tables
+├── state/          # Global app state (useReducer + Context)
+├── theory/         # Music theory helpers (chords, scales, notes)
+└── utils/          # Save/load, MIDI export, PDF export, demo tracks
+```
+
+---
+
+## Demo Tracks
+
+Use the **Demos ▾** menu in the header to load built-in example tracks and explore the features without starting from scratch.
+
+---
+
+## License
+
+Personal project — no licence applied. Feel free to explore the code.
