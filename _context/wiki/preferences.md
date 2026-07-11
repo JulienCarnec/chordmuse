@@ -9,11 +9,11 @@
 
 ## Coding Style
 
-- **Language:** JavaScript with React (JSX) — no TypeScript unless introduced later
-- **Framework:** React with Vite
+- **Language:** JavaScript with React (JSX) — no TypeScript
+- **Framework:** React 19 with Vite 8
 - **Component style:** Functional components with hooks only (no class components)
-- **File structure:** Feature-based or component-based organisation (to be settled during scaffolding)
-- **Styling:** TBD — follow whatever convention is established at scaffold time
+- **File structure:** Component-based — each component in its own folder with a `.jsx` and a `.module.css` file
+- **Styling:** CSS Modules (one `.module.css` per component)
 - **Comments:** Add comments for non-obvious logic, especially music theory calculations
 
 ---
@@ -30,6 +30,6 @@
 ## AI Collaboration
 
 - Trust AI to scaffold, structure, and implement without hand-holding
-- The author is not familiar with audio/MIDI APIs — explain key concepts briefly when introducing them
+- The author is not deeply familiar with audio/MIDI APIs — explain key concepts briefly when introducing them
 - Prefer working, runnable code over stubs or placeholders
 - Update the wiki after tasks that introduce durable architectural decisions
