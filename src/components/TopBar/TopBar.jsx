@@ -206,7 +206,7 @@ export function TopBar({ onLoad }) {
     <header className={styles.bar}>
       {/* Left: logo or breadcrumb */}
       <div className={styles.left}>
-        <span className={styles.logo}>🎵</span>
+        <img src="/favicon.svg" alt="Chordmuse" className={styles.logo} />
         {inProgEditor ? (
           <>
             <span className={styles.breadcrumbSep}>{t.track}</span>
