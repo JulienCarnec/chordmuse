@@ -201,6 +201,40 @@
 }
 .cellWrapper:active { cursor: grabbing; }
 
+/* ── Mobile: one cell per row, full-width ────────────────── */
+@media (pointer: coarse) and (max-width: 1024px) {
+  .rowGroup {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .cellOuter {
+    width: 100%;
+  }
+  .cellWrapper {
+    width: 100%;
+    cursor: default;
+  }
+  /* remove-cell button bigger tap target */
+  .removeCell {
+    min-height: 36px;
+    padding: 4px 12px;
+    font-size: 13px;
+  }
+  /* add-cell button full-width */
+  .addCell {
+    width: 100%;
+    height: 44px;
+    font-size: 24px;
+  }
+  /* panels row: stack vertically */
+  .panels {
+    flex-direction: column;
+  }
+  .panel {
+    width: 100%;
+  }
+}
+
 /* Faded while being dragged */
 .cellDragging {
   opacity: 0.35;
@@ -422,6 +456,28 @@
 }
 .detectedChordDraggable:hover { color: #5b21b6; border-bottom-color: #5b21b6; }
 .detectedChordDraggable:active { cursor: grabbing; }
+
+/* Detected chord button — armed state (chord loaded, waiting for cell tap) */
+.detectedChordArmed {
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-bottom: none !important;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.detectedChordArmed:hover { background: #5b21b6; }
+
+/* Mobile: + button armed state */
+.addCellArmed {
+  border-color: #7c3aed;
+  background: #f5f3ff;
+  color: #7c3aed;
+  border-style: dashed;
+}
 
 .visualiserToggleBtn {
   padding: 4px 12px;

@@ -9,6 +9,7 @@ import { voiceChord } from '../../theory/chords';
 import { useSampler } from '../../audio/useSampler';
 import { usePlayback } from '../Playback/usePlayback';
 import { useT } from '../../i18n/index';
+import { useTouchDrag } from '../../utils/useTouchDrag.jsx';
 import styles from './TrackEditor.module.css';
 
 
@@ -104,6 +105,29 @@ export function TrackEditor() {
   const dragIndexRef = useRef(null);
   const [dropIndex, setDropIndex] = useState(null);
 
+  // ── Touch drag-and-drop (mobile) ───────────────────────────
+  const mainColRef = useRef(null);
+
+  const getTouchTrackEl = useCallback((idx) => {
+    return document.querySelector(`[data-track-idx="${idx}"]`);
+  }, []);
+
+  const handleTouchReorderTrack = useCallback((from, to) => {
+    dispatch({ type: 'REORDER_TRACK', from, to });
+  }, [dispatch]);
+
+  const {
+    getTouchHandlers: getTrackTouchHandlers,
+    dragIndex: touchTrackDragIndex,
+    dropIndex: touchTrackDropIndex,
+    Ghost: TrackGhost,
+  } = useTouchDrag({
+    itemCount: track.length,
+    getItemEl: getTouchTrackEl,
+    onReorder: handleTouchReorderTrack,
+    scrollRef: mainColRef,
+  });
+
   function openNewGridDialog() {
     setNewName('');
     setNewSize(4);
@@ -197,7 +221,7 @@ export function TrackEditor() {
       />
 
       {/* ── Main content column ─────────────────────────────── */}
-      <div className={styles.mainCol}>
+      <div className={styles.mainCol} ref={mainColRef}>
 
       {/* ── Delete confirmation dialog ─────────────────────── */}
       {confirmDeleteId && (
@@ -363,6 +387,8 @@ export function TrackEditor() {
         )}
 
         {/* Right: arrangement */}
+        {/* Touch-drag ghost — rendered into <body> via portal */}
+        {TrackGhost}
         <div
           className={styles.arrangement}
           onDragOver={e => e.preventDefault()}
@@ -378,18 +404,23 @@ export function TrackEditor() {
           {track.map(({ progressionId, repetitions, drumPatternId }, idx) => {
             const prog = progressions[progressionId];
             const assignedDrum = drumPatternId ? state.drumPatterns[drumPatternId] : null;
-            const isDragging = dragIndexRef.current === idx;
+            // isDragging: HTML5 drag (desktop) or touch drag (mobile)
+            const isDragging = dragIndexRef.current === idx || touchTrackDragIndex === idx;
             const isCollapsed = collapsedItems.has(idx);
+            const effectiveDropIndex = touchTrackDropIndex ?? dropIndex;
             return (
               <div key={`${progressionId}-${idx}`} className={styles.trackItemOuter}>
-                {dropIndex === idx && <div className={styles.dropIndicator} />}
+                {effectiveDropIndex === idx && <div className={styles.dropIndicator} />}
                 <div
                   className={`${styles.trackItem} ${isDragging ? styles.itemDragging : ''} ${isCollapsed ? styles.trackItemCollapsed : ''}`}
+                  data-track-idx={idx}
+                  data-drag-label={prog?.name ?? '?'}
                   draggable
                   onDragStart={e => handleDragStart(e, idx)}
                   onDragOver={e => handleDragOver(e, idx)}
                   onDrop={e => handleDrop(e, dropIndex ?? idx)}
                   onDragEnd={handleDragEnd}
+                  {...getTrackTouchHandlers(idx)}
                 >
                   <span className={styles.dragHandle} title={t.dragHandleTitle}>⠿</span>
                   <div className={styles.trackItemBody}>
@@ -460,7 +491,7 @@ export function TrackEditor() {
             onDragOver={handleDragOverAfterLast}
             onDrop={e => handleDrop(e, track.length)}
           >
-            {dropIndex === track.length && <div className={styles.dropIndicator} />}
+            {(touchTrackDropIndex ?? dropIndex) === track.length && <div className={styles.dropIndicator} />}
           </div>
         </div>
 

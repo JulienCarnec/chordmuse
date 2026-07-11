@@ -344,3 +344,157 @@
   cursor: pointer;
 }
 .resetDialogOk:hover { background: #b91c1c; }
+/* ── Mobile TopBar layout ───────────────────────────────────────
+   On large screens the .primaryRow is invisible — .bar itself is
+   the flex row (unchanged). On mobile (≤640px) the .bar becomes a
+   flex column: a compact primary row on top + an optional drawer.
+──────────────────────────────────────────────────────────────── */
+
+/* primaryRow: transparent wrapper on desktop, the visible row on mobile */
+.primaryRow {
+  display: contents; /* on desktop: acts as if it's not there */
+}
+
+/* drawer: hidden on desktop, shown on mobile when open */
+.drawer         { display: none; }
+.drawerToggle   { display: none; }
+.secondaryControls { display: contents; } /* transparent wrapper on desktop */
+
+/* ── Mobile overrides ─────────────────────────────── */
+@media (pointer: coarse) and (max-width: 1024px) {
+
+  /* The outer bar becomes a column to stack primary row + drawer */
+  .bar {
+    flex-direction: column;
+    align-items: stretch;
+    min-height: unset;
+    padding: 0;
+    gap: 0;
+  }
+
+  /* primaryRow is now a real flex row */
+  .primaryRow {
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    min-height: 52px;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  /* Hide logo + app name on mobile */
+  .left {
+    display: none;
+  }
+
+  /* Transport: play buttons + BPM only — no secondary controls */
+  .transport {
+    flex: 1;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  /* Play button slightly larger for easy tapping */
+  .playBtn {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+
+  /* BPM input: slightly wider so digits aren't cramped */
+  .bpmInput {
+    width: 56px;
+    font-size: 14px;
+    padding: 4px 6px;
+  }
+  .bpmLabel {
+    font-size: 12px;
+  }
+
+  /* Hide the secondary controls in the transport on mobile
+     (they live in the drawer instead) */
+  .secondaryControls {
+    display: none;
+  }
+
+  /* Hide the desktop right-side actions (they live in the drawer) */
+  .right {
+    display: none;
+  }
+
+  /* Drawer toggle chevron — shown only on mobile */
+  .drawerToggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    background: #1f2937;
+    color: #9ca3af;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .drawerToggle:active { background: #374151; }
+  .drawerToggleOpen {
+    background: #374151;
+    color: #f9fafb;
+    border-color: #6b7280;
+  }
+
+  /* ── Drawer ─────────────────────────────────────────────── */
+  .drawer {
+    display: none; /* collapsed by default */
+    flex-direction: column;
+    gap: 0;
+    background: #1a2233;
+    border-top: 1px solid #374151;
+    padding: 10px 12px 12px;
+    overflow: hidden;
+  }
+
+  /* Open state */
+  .drawerOpen {
+    display: flex;
+  }
+
+  /* Each row inside the drawer */
+  .drawerRow {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 6px 0;
+  }
+  .drawerRow + .drawerRow {
+    border-top: 1px solid #2d3748;
+  }
+
+  /* Make selects and buttons inside the drawer have adequate tap targets */
+  .drawerRow .headerSelect {
+    padding: 6px 8px;
+    font-size: 13px;
+    min-height: 36px;
+    flex: 1;
+    min-width: 80px;
+  }
+  .drawerRow .autoPlayBtn {
+    min-height: 36px;
+    padding: 6px 12px;
+  }
+  .drawerRow .actionBtn {
+    min-height: 36px;
+    padding: 6px 12px;
+    font-size: 15px;
+  }
+  .drawerRow .resetBtn,
+  .drawerRow .langBtn,
+  .drawerRow .demoBtn {
+    min-height: 36px;
+    padding: 6px 10px;
+  }
+}
+

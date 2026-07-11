@@ -138,6 +138,8 @@ const en = {
   pianoInvHint:           'Click the note you want as the bass note',
   undefinedChord:      'undefined chord',
   dragChordToCell:        'Drag to drop this chord into a cell',
+  tapChordToAssign:       'Tap to arm — then tap a cell to assign',
+  chordArmed:             'Armed — tap a cell (or +) to assign',
 
   // Guitar fretboard
   guitarTitle:            'Guitar',

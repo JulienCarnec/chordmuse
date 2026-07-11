@@ -210,3 +210,67 @@
   color: #6b7280;
   line-height: 1.5;
 }
+
+/* ─── Mobile: floating FAB + fullscreen modal ───────────────── */
+
+/* Floating "?" button — always visible, bottom-right corner */
+.mobileFab {
+  position: fixed;
+  bottom: 20px;
+  right: 16px;
+  z-index: 300;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  display: none; /* shown via @media below */
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.mobileFab:active { background: #1d4ed8; }
+
+@media (pointer: coarse) and (max-width: 1024px) {
+  .mobileFab { display: flex; }
+  /* hide the desktop thumb on mobile */
+  .thumb { display: none; }
+}
+
+/* Full-screen overlay */
+.mobileOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: flex-end;   /* sheet slides up from bottom */
+}
+
+/* Dialog sheet */
+.mobileDialog {
+  width: 100%;
+  max-height: 90dvh;
+  background: #f9fafb;
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Modal header */
+.mobileHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  background: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
