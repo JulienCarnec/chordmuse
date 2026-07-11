@@ -14,29 +14,20 @@ import styles from './TopBar.module.css';
 const TIME_SIGS = ['4/4', '3/4', '6/8', '2/4', '5/4', '7/8', '12/8'];
 
 const INSTRUMENTS = [
-  { value: 'piano',          label: '🎹 Piano' },
-  { value: 'epiano',         label: '🎹 E. Piano' },
-  { value: 'harpsichord',    label: '🎹 Harpsichord' },
-  { value: 'organ',          label: '🎹 Organ' },
-  { value: 'synth',          label: '🎛 Synth Lead' },
-  { value: 'synthpad',       label: '🎛 Synth Pad' },
-  { value: 'synthbass',      label: '🎛 Synth Bass' },
-  { value: 'pad',            label: '🌊 Pad' },
-  { value: 'strings',        label: '🎻 Strings' },
-  { value: 'violin',         label: '🎻 Violin' },
-  { value: 'cello',          label: '🎻 Cello' },
-  { value: 'choir',          label: '🎤 Choir' },
-  { value: 'guitar',         label: '🎸 Guitar (clean)' },
-  { value: 'guitar-distort', label: '🎸 Guitar (distorted)' },
-  { value: 'guitar-nylon',   label: '🎸 Guitar (nylon)' },
-  { value: 'bass',           label: '🎸 Bass' },
-  { value: 'trumpet',        label: '🎺 Trumpet' },
-  { value: 'trombone',       label: '🎺 Trombone' },
-  { value: 'saxophone',      label: '🎷 Saxophone' },
-  { value: 'flute',          label: '🪈 Flute' },
-  { value: 'vibraphone',     label: '🎵 Vibraphone' },
-  { value: 'marimba',        label: '🎵 Marimba' },
-  { value: 'harp',           label: '🎵 Harp' },
+  // ── Keyboards
+  { value: 'piano',        label: '🎹 Piano' },
+  { value: 'epiano',       label: '🎹 E. Piano' },
+  { value: 'organ',        label: '🎹 Organ' },
+  // ── Guitars
+  { value: 'guitar',       label: '🎸 Guitar (clean)' },
+  { value: 'guitar-nylon', label: '🎸 Guitar (classical)' },
+  // ── Synths & pads
+  { value: 'synth',        label: '🎛 Synth Lead' },
+  { value: 'synth-pad',    label: '🎛 Synth Pad' },
+  { value: 'pad',          label: '🌊 Pad' },
+  // ── Strings
+  { value: 'strings',      label: '🎻 Strings' },
+  { value: 'violin',       label: '🎻 Violin' },
 ];
 
 export function TopBar({ onLoad }) {
@@ -46,9 +37,9 @@ export function TopBar({ onLoad }) {
   const { play, stop, pause, resume, updateLiveParams, updateLiveInstrument, reschedule, updateDrumRows } = usePlayback();
   const { setReverbWet } = useSampler();
   const fileRef = useRef();
-  const [humanize,      setHumanize]      = useState(50);
+  const [humanize,      setHumanize]      = useState(30);
   const [maxVelocity,   setMaxVelocity]   = useState(80);
-  const [reverbPct,     setReverbPct]     = useState(50);
+  const [reverbPct,     setReverbPct]     = useState(60);
   const [demoOpen,      setDemoOpen]      = useState(false);
   const [pendingDemo,   setPendingDemo]   = useState(null); // { id, build, label }
   const [resetConfirm,  setResetConfirm]  = useState(false);
@@ -392,6 +383,39 @@ export function TopBar({ onLoad }) {
           />
         </div>
 
+        {/* Mobile-only: demo button always visible next to drawer toggle */}
+        <div className={`${styles.demoWrapper} ${styles.demoPrimaryWrapper}`}>
+          <button
+            className={styles.demoBtn}
+            title={t.demoBtnTitle}
+            onClick={() => setDemoOpen(o => !o)}
+          >
+            {t.demoBtn} ▾
+          </button>
+          {demoOpen && (
+            <ul className={styles.demoMenu} role="menu">
+              {DEMO_TRACKS.map(demo => (
+                <li key={demo.id} role="menuitem">
+                  <button
+                    className={styles.demoMenuItem}
+                    onClick={() => {
+                      setDemoOpen(false);
+                      const hasGrids = Object.keys(state.progressions).length > 0;
+                      if (hasGrids) {
+                        setPendingDemo(demo);
+                      } else {
+                        loadDemo(demo);
+                      }
+                    }}
+                  >
+                    {locale === 'fr' ? demo.labelFr : demo.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         {/* Mobile-only: chevron to open/close the drawer */}
         <button
           className={`${styles.drawerToggle} ${drawerOpen ? styles.drawerToggleOpen : ''}`}
@@ -446,14 +470,9 @@ export function TopBar({ onLoad }) {
             ))}
           </select>
 
-          <button
-            className={`${styles.autoPlayBtn} ${autoPlay ? styles.autoPlayBtnOn : ''}`}
-            title={t.autoPlayTitle}
-            onClick={() => dispatch({ type: 'SET_AUTO_PLAY', autoPlay: !autoPlay })}
-          >▶ {t.autoPlay}</button>
         </div>
 
-        {/* Row 2: knobs */}
+        {/* Row 2: knobs + auto-play */}
         <div className={styles.drawerRow}>
           <div className={styles.knobsGroup}>
             <Knob
@@ -476,42 +495,15 @@ export function TopBar({ onLoad }) {
               color="#60a5fa" valColor="#93c5fd" fmt={v => `${v}%`}
             />
           </div>
+          <button
+            className={`${styles.autoPlayBtn} ${autoPlay ? styles.autoPlayBtnOn : ''}`}
+            title={t.autoPlayTitle}
+            onClick={() => dispatch({ type: 'SET_AUTO_PLAY', autoPlay: !autoPlay })}
+          >▶ {t.autoPlay}</button>
         </div>
 
-        {/* Row 3: file actions + language + demo + reset */}
+        {/* Row 3: file actions + language + reset */}
         <div className={styles.drawerRow}>
-          <div className={styles.demoWrapper}>
-            <button
-              className={styles.demoBtn}
-              title={t.demoBtnTitle}
-              onClick={() => setDemoOpen(o => !o)}
-            >
-              {t.demoBtn} ▾
-            </button>
-            {demoOpen && (
-              <ul className={styles.demoMenu} role="menu">
-                {DEMO_TRACKS.map(demo => (
-                  <li key={demo.id} role="menuitem">
-                    <button
-                      className={styles.demoMenuItem}
-                      onClick={() => {
-                        setDemoOpen(false);
-                        const hasGrids = Object.keys(state.progressions).length > 0;
-                        if (hasGrids) {
-                          setPendingDemo(demo);
-                        } else {
-                          loadDemo(demo);
-                        }
-                      }}
-                    >
-                      {locale === 'fr' ? demo.labelFr : demo.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
           <button
             className={styles.resetBtn}
             title={t.resetTitle}

@@ -12,9 +12,9 @@ export function PlaybackBar() {
   const { state, dispatch } = useAppState();
   const { play, stop, pause, resume, updateLiveParams } = usePlayback();
   const { setReverbWet } = useSampler();
-  const [humanize,    setHumanize]    = useState(50);
+  const [humanize,    setHumanize]    = useState(30);
   const [maxVelocity, setMaxVelocity] = useState(80);
-  const [reverbPct,   setReverbPct]   = useState(50);
+  const [reverbPct,   setReverbPct]   = useState(60);
 
   // On mount, reset any stale isPlaying/isPaused state that may have survived
   // a hot-module reload (module-level refs are reset but React state persists).
@@ -36,17 +36,32 @@ export function PlaybackBar() {
     setReverbWet(reverbPct / 100);
   }, [reverbPct, setReverbWet]);
 
-  const { isPlaying, isPaused, bpm, timeSig, instrument, metronome, progressions, activeProgressionId } = state;
+  const { isPlaying, isPaused, bpm, timeSig, instrument, metronome, groove,
+          progressions, activeProgressionId,
+          globalPlayStyle, globalNoteValue, globalPatternLoop } = state;
 
   function handlePlay() {
     const prog = progressions[activeProgressionId];
     if (!prog) return;
+    const progPlayStyle   = prog.playStyle   ?? globalPlayStyle;
+    const progNoteValue   = prog.noteValue   ?? globalNoteValue;
+    const progPatternLoop = prog.patternLoop ?? globalPatternLoop;
     play({
-      cells: prog.cells,
+      cells: prog.cells.map(cell => ({
+        ...cell,
+        _cellDuration:    prog.cellDuration ?? 'whole',
+        _progPlayStyle:   cell.playStyle   ?? progPlayStyle,
+        _progNoteValue:   cell.noteValue   ?? progNoteValue,
+        _progPatternLoop: cell.patternLoop ?? progPatternLoop,
+      })),
       progressionId: prog.id,
-      bpm, timeSig, instrument,
+      bpm, timeSig, instrument, groove,
       humanize: humanize / 100,
+      playStyle:   progPlayStyle,
+      noteValue:   progNoteValue,
+      patternLoop: progPatternLoop,
       metronome,
+      loop: true,
     });
   }
 

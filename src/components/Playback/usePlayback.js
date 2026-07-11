@@ -1,10 +1,10 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import * as Tone from 'tone';
 import { useAppState } from '../../state/AppContext';
 import { useSampler, stopAllSynths } from '../../audio/useSampler';
 import { useDrumSequencer } from '../../audio/useDrumSequencer';
 import { voiceChord } from '../../theory/chords';
-import { buildEventsFromPattern } from '../../theory/pattern';
+import { buildEventsFromPattern, selectSubPattern } from '../../theory/pattern';
 
 const BASE_OCTAVE = 4;
 const RELEASE_GAP = 0.04;
@@ -45,13 +45,15 @@ function humanJitter(humanize) {
 
 // Live-adjustable playback params (mutated directly, never triggers re-render)
 const liveParams = {
-  playStyle:    { current: '{[a1,b1,c1]}' },
+  playStyle:    { current: 'builtin-block' },
   noteValue:    { current: '4n' },
   humanize:     { current: 0.5 },
   patternLoop:  { current: true },
   timeSig:      { current: '4/4' },
   maxVelocity:  { current: 0.80 },
   groove:       { current: 'straight' },
+  // Reference to the full patterns array so selectSubPattern can look up by id
+  customPatterns: { current: [] },
 };
 
 // Playback session state — reset on every play() / stop()
@@ -96,13 +98,14 @@ function schedulePass(timeOffset, dispatch, stopFn, skipToSec = 0) {
       continue;
     }
     const { notes, dur, cellIndex } = seg;
-    const ps     = seg.playStyle  ?? liveParams.playStyle.current;
+    const psId   = seg.playStyle  ?? liveParams.playStyle.current;
     const nv     = seg.noteValue  ?? liveParams.noteValue.current;
     const hum    = liveParams.humanize.current;
     const loop   = seg.patternLoop ?? liveParams.patternLoop.current;
     const maxVel = liveParams.maxVelocity.current;
     const groove = liveParams.groove.current;
-    const events = buildEvents(notes, ps, nv, dur, hum, loop, maxVel, groove);
+    const patternTimeOffset = seg.patternTimeOffset ?? 0;
+    const events = buildEvents(notes, psId, nv, dur, hum, loop, maxVel, groove, liveParams.customPatterns.current, patternTimeOffset);
 
     for (const ev of events) {
       const t = Math.max(cursor, cursor + ev.time + ev.jitter);
@@ -170,6 +173,12 @@ export function usePlayback() {
   const { state, dispatch } = useAppState();
   const { getSynth } = useSampler();
   const { startDrumSeq, stopDrumSeq, updateDrumRows, updateDrumOverrides } = useDrumSequencer();
+
+  // Keep customPatterns ref always current so pattern lookups in the
+  // scheduler never see a stale closure snapshot.
+  useEffect(() => {
+    liveParams.customPatterns.current = state.customPatterns ?? [];
+  }, [state.customPatterns]);
 
   const stop = useCallback(() => {
     Tone.getTransport().stop();
@@ -264,13 +273,14 @@ export function usePlayback() {
 
   // Update live params without restarting playback.
   const updateLiveParams = useCallback((params) => {
-    if (params.playStyle    !== undefined) liveParams.playStyle.current    = params.playStyle;
-    if (params.noteValue    !== undefined) liveParams.noteValue.current    = params.noteValue;
-    if (params.humanize     !== undefined) liveParams.humanize.current     = params.humanize;
-    if (params.patternLoop  !== undefined) liveParams.patternLoop.current  = params.patternLoop;
-    if (params.timeSig      !== undefined) liveParams.timeSig.current      = params.timeSig;
-    if (params.maxVelocity  !== undefined) liveParams.maxVelocity.current  = params.maxVelocity;
-    if (params.groove       !== undefined) liveParams.groove.current       = params.groove;
+    if (params.playStyle      !== undefined) liveParams.playStyle.current      = params.playStyle;
+    if (params.noteValue      !== undefined) liveParams.noteValue.current      = params.noteValue;
+    if (params.humanize       !== undefined) liveParams.humanize.current       = params.humanize;
+    if (params.patternLoop    !== undefined) liveParams.patternLoop.current    = params.patternLoop;
+    if (params.timeSig        !== undefined) liveParams.timeSig.current        = params.timeSig;
+    if (params.maxVelocity    !== undefined) liveParams.maxVelocity.current    = params.maxVelocity;
+    if (params.groove         !== undefined) liveParams.groove.current         = params.groove;
+    if (params.customPatterns !== undefined) liveParams.customPatterns.current = params.customPatterns;
   }, []);
 
   // Update the live cells ref so the next scheduled pass picks up the change.
@@ -427,21 +437,26 @@ function buildSegments(cells, barDur) {
     const cellNoteValue   = cell.noteValue   ?? cell._progNoteValue   ?? null;
     const cellPatternLoop = cell.patternLoop ?? cell._progPatternLoop ?? null;
     if (cell.split) {
-      for (const sc of cell.subCells.filter(Boolean)) {
+      const subCells = cell.subCells.filter(Boolean);
+      subCells.forEach((sc, subIdx) => {
         const subPlayStyle   = sc.playStyle   ?? cellPlayStyle;
         const subNoteValue   = sc.noteValue   ?? cellNoteValue;
         const subPatternLoop = sc.patternLoop ?? cellPatternLoop;
+        // Second sub-cell continues the pattern where the first left off.
+        // patternTimeOffset = duration already consumed = subIdx × half-cell duration.
+        const patternTimeOffset = subIdx * (cellDur / 2);
         segments.push({
           notes: voiceChord(sc, sc.octave ?? BASE_OCTAVE),
           dur: cellDur / 2,
           cellIndex: cellLocalCellIndex,
           progressionId: cellProgressionId,
           trackIndex: cellTrackIndex,
-          playStyle:   subPlayStyle,
-          noteValue:   subNoteValue,
-          patternLoop: subPatternLoop,
+          playStyle:        subPlayStyle,
+          noteValue:        subNoteValue,
+          patternLoop:      subPatternLoop,
+          patternTimeOffset,
         });
-      }
+      });
     } else if (cell.chord) {
       segments.push({
         notes: voiceChord(cell.chord, cell.chord.octave ?? BASE_OCTAVE),
@@ -460,13 +475,39 @@ function buildSegments(cells, barDur) {
 
 /**
  * Build the event list for one chord segment.
- * Each event: { time, notes, duration, velocity, jitter }
+ * playStyleId may be a pattern id (new) or a legacy {…} string.
  */
-function buildEvents(notes, playStyle, noteValue, cellDur, humanize = 0, patternLoop = true, maxVelocity = 0.80, groove = 'straight') {
+function buildEvents(notes, playStyleId, noteValue, cellDur, humanize = 0, patternLoop = true, maxVelocity = 0.80, groove = 'straight', customPatterns = [], patternTimeOffset = 0) {
   const velFn = (baseVel, hum) => humanVel(baseVel * maxVelocity / 0.80, hum);
+
+  // Resolve pattern: new id-based or legacy string
+  let patternStr = playStyleId;
+  let resolvedNoteValue = noteValue;
+  let resolvedLoop = patternLoop;
+
+  if (playStyleId && !playStyleId.startsWith('{')) {
+    // ID reference — look up the pattern object
+    const patternObj = customPatterns.find(p => p.id === playStyleId);
+    if (patternObj) {
+      const noteCount = notes.length;
+      const sub = selectSubPattern(patternObj, noteCount);
+      if (sub) {
+        patternStr = sub.patternStr;
+        resolvedNoteValue = sub.noteValue ?? noteValue;
+        resolvedLoop = patternObj.loop ?? patternLoop;
+      }
+    }
+  }
+
+  if (!patternStr || !patternStr.startsWith('{')) {
+    // Fallback: block chord (all notes sustain)
+    patternStr = `{[${notes.map((_, i) => `${String.fromCharCode(97 + i)}1`).join(',')}]}`;
+    resolvedNoteValue = noteValue;
+  }
+
   return buildEventsFromPattern(
-    playStyle, notes, noteValue, cellDur, patternLoop,
-    humanize, velFn, humanJitter, groove,
+    patternStr, notes, resolvedNoteValue, cellDur, resolvedLoop,
+    humanize, velFn, humanJitter, groove, patternTimeOffset,
   );
 }
 

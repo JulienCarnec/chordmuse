@@ -43,7 +43,7 @@ export function ChordGrid() {
   // Piano highlights only the exact key; guitar derives pitch-class to highlight all frets.
   const [sharedHighlight, setSharedHighlight] = useState(new Set());
   const { playNotes, playArpeggio } = useSampler();
-  const { updateLiveParams, updateLiveCells } = usePlayback();
+  const { updateLiveParams, updateLiveCells, reschedule } = usePlayback();
   // Scale animation: Set<"note+octave"> of notes currently lit during scale playback
   const [playingScaleNotes, setPlayingScaleNotes] = useState(new Set());
   const scaleTimersRef = useRef([]);
@@ -203,22 +203,33 @@ export function ChordGrid() {
   const progNoteValue   = prog?.noteValue   ?? globalNoteValue;
   const progPatternLoop = prog?.patternLoop ?? globalPatternLoop;
 
-  // Keep liveParams in sync with this progression's pattern + time signature
+  // Keep liveParams in sync with this progression's pattern + time signature.
+  // Also reschedule so already-queued events pick up the new pattern immediately.
   useEffect(() => {
     updateLiveParams({ playStyle: progPlayStyle, noteValue: progNoteValue, patternLoop: progPatternLoop });
-  }, [progPlayStyle, progNoteValue, progPatternLoop, updateLiveParams]);
+    if (isPlaying || isPaused) reschedule();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progPlayStyle, progNoteValue, progPatternLoop]);
 
   useEffect(() => {
     updateLiveParams({ timeSig });
   }, [timeSig, updateLiveParams]);
 
-  // Push updated cells into the live playback engine when chords/cells change mid-play.
-  // Cells must carry _cellDuration so the engine uses the right duration on every loop pass.
+  // Push updated cells into the live playback engine when chords/cells change mid-play,
+  // then immediately reschedule so the new pattern takes effect on the next cell boundary.
   useEffect(() => {
     if ((isPlaying || isPaused) && prog?.cells) {
-      updateLiveCells(prog.cells.map(cell => ({ ...cell, _cellDuration: prog.cellDuration ?? 'whole' })));
+      updateLiveCells(prog.cells.map(cell => ({
+        ...cell,
+        _cellDuration:    prog.cellDuration ?? 'whole',
+        _progPlayStyle:   cell.playStyle   ?? progPlayStyle,
+        _progNoteValue:   cell.noteValue   ?? progNoteValue,
+        _progPatternLoop: cell.patternLoop ?? progPatternLoop,
+      })));
+      reschedule();
     }
-  }, [prog?.cells, prog?.cellDuration, isPlaying, isPaused, updateLiveCells]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prog?.cells, prog?.cellDuration]);
 
   if (!prog) {
     return (

@@ -356,8 +356,9 @@
 }
 
 /* drawer: hidden on desktop, shown on mobile when open */
-.drawer         { display: none; }
-.drawerToggle   { display: none; }
+.drawer              { display: none; }
+.drawerToggle        { display: none; }
+.demoPrimaryWrapper  { display: none; } /* mobile-only demo button in primary row */
 .secondaryControls { display: contents; } /* transparent wrapper on desktop */
 
 /* ── Mobile overrides ─────────────────────────────── */
@@ -422,6 +423,18 @@
     display: none;
   }
 
+  /* Demo button in primary row — shown only on mobile */
+  .demoPrimaryWrapper {
+    display: flex;
+    flex-shrink: 0;
+  }
+
+  /* Its dropdown opens to the left so it stays on-screen */
+  .demoPrimaryWrapper .demoMenu {
+    right: 0;
+    left: auto;
+  }
+
   /* Drawer toggle chevron — shown only on mobile */
   .drawerToggle {
     display: flex;
@@ -465,6 +478,7 @@
   .drawerRow {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     flex-wrap: wrap;
     gap: 8px;
     padding: 6px 0;

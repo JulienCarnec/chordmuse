@@ -1,6 +1,22 @@
 import { useCallback } from 'react';
 import * as Tone from 'tone';
 
+// ─── Sample note lists ────────────────────────────────────────────────────────
+// All instruments use MusyngKite soundfonts from gleitz/midi-js-soundfonts
+// (https://gleitz.github.io/midi-js-soundfonts/MusyngKite/).
+// Flat notation (Db, Eb, Gb, Ab, Bb) as provided by that collection.
+// A sparse but evenly-spaced set of notes is enough — Tone.Sampler pitch-shifts
+// the rest.
+
+const SPARSE_NOTES = {
+  A1: 'A1.mp3', A2: 'A2.mp3', A3: 'A3.mp3', A4: 'A4.mp3', A5: 'A5.mp3',
+  C2: 'C2.mp3', C3: 'C3.mp3', C4: 'C4.mp3', C5: 'C5.mp3', C6: 'C6.mp3',
+  Eb2: 'Eb2.mp3', Eb3: 'Eb3.mp3', Eb4: 'Eb4.mp3', Eb5: 'Eb5.mp3',
+  Gb2: 'Gb2.mp3', Gb3: 'Gb3.mp3', Gb4: 'Gb4.mp3', Gb5: 'Gb5.mp3',
+};
+
+const MUSYNGKITE = 'https://gleitz.github.io/midi-js-soundfonts/MusyngKite/';
+
 const INSTRUMENT_CONFIGS = {
   piano: {
     urls: {
@@ -15,13 +31,49 @@ const INSTRUMENT_CONFIGS = {
     },
     baseUrl: 'https://tonejs.github.io/audio/salamander/',
   },
+  epiano: {
+    urls: SPARSE_NOTES,
+    baseUrl: `${MUSYNGKITE}electric_piano_1-mp3/`,
+  },
+  organ: {
+    urls: SPARSE_NOTES,
+    baseUrl: `${MUSYNGKITE}drawbar_organ-mp3/`,
+  },
+  pad: {
+    urls: SPARSE_NOTES,
+    baseUrl: `${MUSYNGKITE}pad_2_warm-mp3/`,
+  },
+  guitar: {
+    urls: SPARSE_NOTES,
+    baseUrl: `${MUSYNGKITE}electric_guitar_clean-mp3/`,
+  },
+  'guitar-nylon': {
+    urls: SPARSE_NOTES,
+    baseUrl: `${MUSYNGKITE}acoustic_guitar_nylon-mp3/`,
+  },
+  synth: {
+    urls: SPARSE_NOTES,
+    baseUrl: `${MUSYNGKITE}lead_2_sawtooth-mp3/`,
+  },
+  'synth-pad': {
+    urls: SPARSE_NOTES,
+    baseUrl: `${MUSYNGKITE}pad_3_polysynth-mp3/`,
+  },
+  strings: {
+    urls: SPARSE_NOTES,
+    baseUrl: `${MUSYNGKITE}string_ensemble_1-mp3/`,
+  },
+  violin: {
+    urls: SPARSE_NOTES,
+    baseUrl: `${MUSYNGKITE}violin-mp3/`,
+  },
 };
 
-// Shared reverb — created once, connected to destination
+// ─── Shared reverb ────────────────────────────────────────────────────────────
 let reverbNode = null;
 function getReverb() {
   if (!reverbNode) {
-    reverbNode = new Tone.Reverb({ decay: 1.8, wet: 0.50 }).toDestination();
+    reverbNode = new Tone.Reverb({ decay: 1.8, wet: 0.60 }).toDestination();
   }
   return reverbNode;
 }
@@ -31,195 +83,43 @@ export function setReverbWet(value) {
   if (reverbNode) reverbNode.wet.value = value;
 }
 
-// ─── Synth factory — one distinct preset per instrument key ─────────────────
+// ─── Sampler cache ────────────────────────────────────────────────────────────
+// One Tone.Sampler instance per instrument key, created on first use.
+const samplerCache = {};
+const samplerLoadingPromises = {};
 
-function makeSynth(instrument) {
-  const reverb = getReverb();
-  switch (instrument) {
-    case 'epiano':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sine' },
-        envelope: { attack: 0.02, decay: 0.4, sustain: 0.3, release: 1.4 },
-      }).connect(reverb);
-
-    case 'harpsichord':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'square' },
-        envelope: { attack: 0.001, decay: 0.3, sustain: 0.0, release: 0.2 },
-      }).connect(reverb);
-
-    case 'organ':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sawtooth' },
-        envelope: { attack: 0.01, decay: 0.0, sustain: 1.0, release: 0.05 },
-      }).connect(reverb);
-
-    case 'synth':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sawtooth' },
-        envelope: { attack: 0.005, decay: 0.1, sustain: 0.6, release: 0.5 },
-      }).connect(reverb);
-
-    case 'synthpad':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sine' },
-        envelope: { attack: 0.4, decay: 0.2, sustain: 0.8, release: 1.5 },
-      }).connect(reverb);
-
-    case 'synthbass':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sawtooth' },
-        envelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.3 },
-      }).connect(reverb);
-
-    case 'pad':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sine' },
-        envelope: { attack: 0.6, decay: 0.4, sustain: 0.7, release: 2.0 },
-      }).connect(reverb);
-
-    case 'strings':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sawtooth' },
-        envelope: { attack: 0.15, decay: 0.1, sustain: 0.9, release: 0.8 },
-      }).connect(reverb);
-
-    case 'violin':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sawtooth' },
-        envelope: { attack: 0.08, decay: 0.05, sustain: 0.95, release: 0.6 },
-      }).connect(reverb);
-
-    case 'cello':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sawtooth' },
-        envelope: { attack: 0.12, decay: 0.1, sustain: 0.85, release: 0.9 },
-      }).connect(reverb);
-
-    case 'choir':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sine' },
-        envelope: { attack: 0.3, decay: 0.2, sustain: 0.85, release: 1.2 },
-      }).connect(reverb);
-
-    case 'guitar':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'triangle' },
-        envelope: { attack: 0.005, decay: 0.5, sustain: 0.05, release: 0.8 },
-      }).connect(reverb);
-
-    case 'guitar-distort':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sawtooth' },
-        envelope: { attack: 0.005, decay: 0.3, sustain: 0.4, release: 0.5 },
-      }).connect(new Tone.Distortion(0.6).connect(reverb));
-
-    case 'guitar-nylon':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'triangle' },
-        envelope: { attack: 0.003, decay: 0.8, sustain: 0.0, release: 0.6 },
-      }).connect(reverb);
-
-    case 'bass':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'triangle' },
-        envelope: { attack: 0.01, decay: 0.3, sustain: 0.5, release: 0.4 },
-      }).connect(reverb);
-
-    case 'trumpet':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'square' },
-        envelope: { attack: 0.02, decay: 0.1, sustain: 0.7, release: 0.3 },
-      }).connect(reverb);
-
-    case 'trombone':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sawtooth' },
-        envelope: { attack: 0.05, decay: 0.1, sustain: 0.75, release: 0.5 },
-      }).connect(reverb);
-
-    case 'saxophone':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sawtooth' },
-        envelope: { attack: 0.03, decay: 0.15, sustain: 0.7, release: 0.4 },
-      }).connect(reverb);
-
-    case 'flute':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sine' },
-        envelope: { attack: 0.05, decay: 0.05, sustain: 0.9, release: 0.3 },
-      }).connect(reverb);
-
-    case 'vibraphone':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sine' },
-        envelope: { attack: 0.005, decay: 1.0, sustain: 0.1, release: 1.0 },
-      }).connect(reverb);
-
-    case 'marimba':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'sine' },
-        envelope: { attack: 0.002, decay: 0.5, sustain: 0.0, release: 0.4 },
-      }).connect(reverb);
-
-    case 'harp':
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'triangle' },
-        envelope: { attack: 0.003, decay: 0.9, sustain: 0.05, release: 1.0 },
-      }).connect(reverb);
-
-    default:
-      return new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'triangle' },
-        envelope: { attack: 0.02, decay: 0.1, sustain: 0.5, release: 1.2 },
-      }).connect(reverb);
-  }
+function buildSampler(instrument) {
+  const config = INSTRUMENT_CONFIGS[instrument];
+  return new Promise((resolve) => {
+    const sampler = new Tone.Sampler({
+      urls: config.urls,
+      baseUrl: config.baseUrl,
+      onload: () => {
+        const s = sampler.connect(getReverb());
+        samplerCache[instrument] = s;
+        delete samplerLoadingPromises[instrument];
+        resolve(s);
+      },
+    });
+  });
 }
-
-// Module-level cache: one synth instance per instrument key, shared across hook instances
-let samplerCache = {};
-let samplerLoadingPromise = null;
-
-// Synth cache keyed by instrument name
-const synthCache = {};
 
 export function stopAllSynths() {
-  Object.values(synthCache).forEach((synth) => {
-    synth.releaseAll?.();
-    synth.triggerRelease?.(Object.keys(synth.activeVoices ?? {}));
-  });
-  Object.values(samplerCache).forEach((sampler) => {
-    sampler.releaseAll?.();
-    sampler.triggerRelease?.(Object.keys(sampler._activeSources ?? {}));
+  Object.values(samplerCache).forEach((s) => {
+    s.releaseAll?.();
   });
 }
 
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 export function useSampler() {
   const getSynth = useCallback(async (instrument = 'piano') => {
     await Tone.start();
 
-    if (instrument === 'piano') {
-      if (samplerCache.piano) return samplerCache.piano;
-      if (samplerLoadingPromise) return samplerLoadingPromise;
-      samplerLoadingPromise = new Promise((resolve) => {
-        const sampler = new Tone.Sampler({
-          ...INSTRUMENT_CONFIGS.piano,
-          onload: () => {
-            const s = sampler.connect(getReverb());
-            samplerCache.piano = s;
-            samplerLoadingPromise = null;
-            resolve(s);
-          },
-        });
-      });
-      return samplerLoadingPromise;
-    }
+    if (samplerCache[instrument]) return samplerCache[instrument];
+    if (samplerLoadingPromises[instrument]) return samplerLoadingPromises[instrument];
 
-    // Non-piano: one cached PolySynth per instrument key
-    if (!synthCache[instrument]) {
-      synthCache[instrument] = makeSynth(instrument);
-    }
-    return synthCache[instrument];
+    samplerLoadingPromises[instrument] = buildSampler(instrument);
+    return samplerLoadingPromises[instrument];
   }, []);
 
   const playNotes = useCallback(async (notes, duration = '2n', instrument = 'piano') => {

@@ -1,5 +1,6 @@
 import { createContext, useContext, useReducer, useEffect } from 'react';
 import { CHROMATIC } from '../theory/notes';
+import { DEFAULT_PATTERNS } from '../theory/defaultPatterns';
 
 // ─── Persistence key ──────────────────────────────────────────────────────────
 const LS_KEY = 'chordmuse_state_v1';
@@ -37,156 +38,10 @@ export const INITIAL_STATE = {
     drumEnabled: false,     // whether the drum sequencer fires during playback
   },
 
-  // Built-in + user-saved custom patterns: array of { id, name, pattern, noteValue, loop }
-  // IDs prefixed with "builtin-" are shipped with the app; user patterns use "custom-<timestamp>".
-  customPatterns: [
-    // ── Block / Strum ────────────────────────────────────────────────────────
-    {
-      id: 'builtin-block',
-      name: 'Block chord',
-      pattern: '{[a1,b1,c1,d1,e1]}',
-      noteValue: '4n',
-      loop: true,
-    },
-    {
-      id: 'builtin-strum-on',
-      name: 'On-beat strum',
-      pattern: '{[a1,b1,c1,d1,e1],[a1,b1,c1,d1,e1],[a1,b1,c1,d1,e1],[a1,b1,c1,d1,e1]}',
-      noteValue: '4n',
-      loop: false,
-    },
-    {
-      id: 'builtin-strum-off',
-      name: 'Off-beat strum',
-      pattern: '{,[a1,b1,c1,d1,e1],[a1,b1,c1,d1,e1],[a1,b1,c1,d1,e1],[a1,b1,c1,d1,e1]}',
-      noteValue: '4n',
-      loop: false,
-    },
-    {
-      id: 'builtin-strum-folk',
-      name: 'Folk strum (D-DU-DU)',
-      pattern: '{[a1,b1,c1,d1,e1],,[a1,b1,c1,d1,e1],[a1,b1,c1,d1,e1],,[a1,b1,c1,d1,e1],[a1,b1,c1,d1,e1]}',
-      noteValue: '8n',
-      loop: false,
-    },
-    {
-      id: 'builtin-strum-staccato',
-      name: 'Staccato chops',
-      pattern: '{[a1,b1,c1,d1,e1].,[a1,b1,c1,d1,e1].,[a1,b1,c1,d1,e1].,[a1,b1,c1,d1,e1].}',
-      noteValue: '4n',
-      loop: false,
-    },
-    {
-      id: 'builtin-reggae',
-      name: 'Reggae off-beat',
-      pattern: '{a0,[a1,b1,c1,d1,e1].,,[a1,b1,c1,d1,e1].}',
-      noteValue: '4n',
-      loop: false,
-    },
-    // ── Bass + chord ─────────────────────────────────────────────────────────
-    {
-      id: 'builtin-bass-chord',
-      name: 'Bass + chord',
-      pattern: '{a0,[b1,c1],a0,[b1,c1]}',
-      noteValue: '4n',
-      loop: false,
-    },
-    {
-      id: 'builtin-oom-pah-pah',
-      name: 'Oom-pah-pah (3/4)',
-      pattern: '{a0,[b1,c1],[b1,c1]}',
-      noteValue: '4n',
-      loop: false,
-    },
-    {
-      id: 'builtin-bass-walk',
-      name: 'Bass walk',
-      pattern: '{a0,a0,[b1,c1],a0}',
-      noteValue: '4n',
-      loop: false,
-    },
-    // ── Arpeggios ────────────────────────────────────────────────────────────
-    {
-      id: 'builtin-arp-up',
-      name: 'Arpeggio up',
-      pattern: '{a1,b1,c1}',
-      noteValue: '8n',
-      loop: true,
-    },
-    {
-      id: 'builtin-arp-down',
-      name: 'Arpeggio down',
-      pattern: '{c1,b1,a1}',
-      noteValue: '8n',
-      loop: true,
-    },
-    {
-      id: 'builtin-arp-updown',
-      name: 'Arpeggio up-down',
-      pattern: '{a1,b1,c1,b1}',
-      noteValue: '8n',
-      loop: true,
-    },
-    {
-      id: 'builtin-arp-2oct',
-      name: 'Arpeggio 2 octaves',
-      pattern: '{a1,b1,c1,a2,b2,c2}',
-      noteValue: '8n',
-      loop: true,
-    },
-    {
-      id: 'builtin-arp-staccato',
-      name: 'Arpeggio staccato',
-      pattern: '{a1.,b1.,c1.}',
-      noteValue: '8n',
-      loop: true,
-    },
-    // ── Figures ──────────────────────────────────────────────────────────────
-    {
-      id: 'builtin-bach',
-      name: 'Bach prelude',
-      pattern: '{a0,c0,a1,b1,[c1,d1],a1,b1,[c1,d1]}',
-      noteValue: '8n',
-      loop: true,
-    },
-    {
-      id: 'builtin-bass-burst',
-      name: 'Bass + arp burst',
-      pattern: '{a0,[b1,c1,d1,e1],a1,c1,a1,[b1,c1,d1,e1]}',
-      noteValue: '8n',
-      loop: true,
-    },
-    {
-      id: 'builtin-pickup',
-      name: 'Staccato pick-up',
-      pattern: '{a1.,b1.,c1.,[a1,b1,c1,d1,e1]}',
-      noteValue: '8n',
-      loop: false,
-    },
-    {
-      id: 'builtin-alberti',
-      name: 'Alberti bass',
-      pattern: '{[a0,c0],a1,[b1,c1,d1,e1],a1}',
-      noteValue: '4n',
-      loop: true,
-    },
-    {
-      id: 'builtin-albertibuckley',
-      name: 'Buckley',
-      pattern: '{[a0,c0],a1,b1,[c1,d1],b1,c1}',
-      noteValue: '4n',
-      loop: true,
-      
-    },
-    // ── 7th-chord figures ────────────────────────────────────────────────────
-    {
-      id: 'builtin-arp-7th',
-      name: 'Arpeggio (7th chord)',
-      pattern: '{a0,c1,b1,d1,c1,b1}',
-      noteValue: '8n',
-      loop: true,
-    },
-  ],
+  // Built-in + user-saved custom patterns.
+  // Built-in IDs are prefixed "builtin-"; user patterns use "custom-<timestamp>".
+  // New format: { id, name, loop, columns, subPatterns: { 3, 4, 5 } }
+  customPatterns: DEFAULT_PATTERNS,
 
   // Playback
   isPlaying: false,
@@ -292,7 +147,7 @@ export const INITIAL_STATE = {
   trackDescription: '',
 
   // Global pattern settings (saved with the project)
-  globalPlayStyle:   '{[a1,b1,c1,d1,e1]}',
+  globalPlayStyle:   'builtin-block',
   globalNoteValue:   '4n',
   globalPatternLoop: true,
 
@@ -315,9 +170,23 @@ function buildInitialState() {
     savedProgId &&
     (saved.progressions ?? {})[savedProgId] != null;
 
+  // Rebuild the canonical builtin-* entries from DEFAULT_PATTERNS, and
+  // keep only user custom-* patterns from localStorage. This prevents stale
+  // old built-in definitions (with wrong IDs or old formats) from surviving
+  // across releases.
+  const savedCustom = (saved.customPatterns ?? []).filter(
+    p => !p.id.startsWith('builtin-')  // drop all saved builtin-* entries
+  );
+  const mergedPatterns = [
+    ...DEFAULT_PATTERNS,               // canonical builtins always come first
+    ...savedCustom,                    // then the user's own custom-* patterns
+  ];
+
   return {
     ...INITIAL_STATE,
     ...saved,
+    // Always use fresh built-ins merged with user customs
+    customPatterns: mergedPatterns,
     metronome: { ...INITIAL_STATE.metronome, ...(saved.metronome ?? {}) },
     drumPatterns: { ...INITIAL_STATE.drumPatterns, ...(saved.drumPatterns ?? {}) },
     drumPatternOrder: saved.drumPatternOrder?.length

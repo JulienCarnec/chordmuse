@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react';
 import { preferFlat, displayNote, noteIndex, noteName } from '../../theory/notes';
 import { CHORD_TYPES } from '../../theory/chords'; // still needed for bassNote()
 import { SCALE_DEFINITIONS } from '../../theory/scales';
@@ -75,6 +76,15 @@ export function ProgressionMiniGrid({
   controls,
 }) {
   const t = useT();
+  const activeCellRef = useRef(null);
+
+  // Scroll the active cell into view whenever the cursor moves to a new cell
+  useEffect(() => {
+    if (activeCellRef.current) {
+      activeCellRef.current.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+    }
+  }, [playbackCursor?.cellIndex, playbackCursor?.trackIndex]);
+
   if (!prog) return null;
 
   const scaleRoot = prog.scaleRoot ?? globalScaleRoot;
@@ -129,7 +139,7 @@ export function ProgressionMiniGrid({
                 const bass1  = bassNote(sc1, useFlat);
                 const maxLen = Math.max(label0.length, label1.length);
                 return (
-                  <div key={cellIndex} data-len={maxLen} className={`${styles.cell} ${styles.splitCell} ${isActive ? styles.active : ''}`}>
+                  <div key={cellIndex} ref={isActive ? activeCellRef : null} data-len={maxLen} className={`${styles.cell} ${styles.splitCell} ${isActive ? styles.active : ''}`}>
                     <span
                         className={styles.splitTop}
                         onClick={() => sc0 && onCellClick?.(sc0, cellIndex)}
@@ -154,6 +164,7 @@ export function ProgressionMiniGrid({
               return (
                 <div
                   key={cellIndex}
+                  ref={isActive ? activeCellRef : null}
                   data-len={label.length}
                   className={`${styles.cell} ${isActive ? styles.active : ''} ${!cell.chord ? styles.empty : ''} ${cell.chord && onCellClick ? styles.clickable : ''}`}
                   onClick={() => cell.chord && onCellClick?.(cell.chord, cellIndex)}
