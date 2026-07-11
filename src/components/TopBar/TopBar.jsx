@@ -52,6 +52,7 @@ export function TopBar({ onLoad }) {
   const [demoOpen,      setDemoOpen]      = useState(false);
   const [pendingDemo,   setPendingDemo]   = useState(null); // { id, build, label }
   const [resetConfirm,  setResetConfirm]  = useState(false);
+  const [drawerOpen,    setDrawerOpen]    = useState(false);
 
   // Keep liveParams in sync with knobs at all times (including on first render).
   const {
@@ -205,179 +206,355 @@ export function TopBar({ onLoad }) {
 
   return (
     <header className={styles.bar}>
-      {/* Left: logo or breadcrumb */}
-      <div className={styles.left}>
-        <img src="/favicon.svg" alt="Chordmuse" className={styles.logo} />
-        <span className={styles.appName}>Chordmuse</span>
-        {inProgEditor ? (
-          <>
-            <span className={styles.breadcrumbSep}>{t.track}</span>
-            <span className={styles.breadcrumbArrow}>›</span>
-            <span className={styles.breadcrumbCurrent}>{progName}</span>
-          </>
-        ) : null}
-      </div>
 
-      {/* Centre: transport controls */}
-      <div className={styles.transport}>
-        {/* Play / Pause / Resume / Stop */}
-        {!isPlaying && !isPaused && (
-          <button className={styles.playBtn} title={t.playTitle} onClick={handlePlay}>▶</button>
-        )}
-        {isPlaying && (
-          <>
-            <button className={styles.playBtn} title={t.pauseTitle} onClick={pause}>⏸</button>
-            <button className={`${styles.playBtn} ${styles.stopBtn}`} title={t.stopTitle} onClick={stop}>■</button>
-          </>
-        )}
-        {isPaused && (
-          <>
-            <button className={styles.playBtn} title={t.resumeTitle} onClick={resume}>▶</button>
-            <button className={`${styles.playBtn} ${styles.stopBtn}`} title={t.stopTitle} onClick={stop}>■</button>
-          </>
-        )}
+      {/* ── PRIMARY ROW ──────────────────────────────────────────
+          Desktop: the single bar row (left + transport + right).
+          Mobile:  logo/name hidden; play+BPM always visible;
+                   a chevron button opens/closes the drawer.        */}
+      <div className={styles.primaryRow}>
 
-        {/* BPM */}
-        <div className={styles.bpmGroup}>
-          <input
-            type="number"
-            className={styles.bpmInput}
-            value={bpm}
-            min={0} max={1000}
-            title={t.bpmTitle}
-            onChange={e => adjustBpm(Number(e.target.value) - bpm)}
-          />
-          <span className={styles.bpmLabel}>{t.bpm}</span>
+        {/* Left: logo + app name (hidden on mobile) */}
+        <div className={styles.left}>
+          <img src="/favicon.svg" alt="Chordmuse" className={styles.logo} />
+          <span className={styles.appName}>Chordmuse</span>
+          {inProgEditor ? (
+            <>
+              <span className={styles.breadcrumbSep}>{t.track}</span>
+              <span className={styles.breadcrumbArrow}>›</span>
+              <span className={styles.breadcrumbCurrent}>{progName}</span>
+            </>
+          ) : null}
         </div>
 
-        {/* Time signature */}
-        <select
-          className={styles.headerSelect}
-          value={timeSig}
-          title={t.timeSigTitle}
-          onChange={e => dispatch({ type: 'SET_TIME_SIG', timeSig: e.target.value })}
-        >
-          {TIME_SIGS.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-
-        {/* Groove selector */}
-        <select
-          className={styles.headerSelect}
-          value={groove}
-          title={t.grooveTitle}
-          onChange={e => dispatch({ type: 'SET_GROOVE', groove: e.target.value })}
-        >
-          <option value="straight">{t.grooveStraight}</option>
-          <option value="shuffle">{t.grooveShuffle}</option>
-          <option value="swing">{t.grooveSwing}</option>
-        </select>
-
-        {/* Instrument */}
-        <select
-          className={styles.headerSelect}
-          value={instrument}
-          title={t.instrumentTitle}
-          onChange={e => {
-            dispatch({ type: 'SET_INSTRUMENT', instrument: e.target.value });
-            updateLiveInstrument(e.target.value);
-          }}
-        >
-          {INSTRUMENTS.map(({ value, label }) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
-
-        {/* Auto-play toggle */}
-        <button
-          className={`${styles.autoPlayBtn} ${autoPlay ? styles.autoPlayBtnOn : ''}`}
-          title={t.autoPlayTitle}
-          onClick={() => dispatch({ type: 'SET_AUTO_PLAY', autoPlay: !autoPlay })}
-        >▶ {t.autoPlay}</button>
-
-        {/* Knobs: Humanize · Velocity · Reverb */}
-        <div className={styles.knobsGroup}>
-          <Knob
-            label={t.hum} value={humanize}
-            onChange={setHumanize}
-            title={t.humTitle}
-            color="#a78bfa" fmt={v => `${v}%`}
-          />
-          <Knob
-            label={t.velocity} value={maxVelocity}
-            onChange={setMaxVelocity}
-            min={10} max={100}
-            title={t.velocityTitle}
-            color="#34d399" valColor="#6ee7b7" fmt={v => `${v}%`}
-          />
-          <Knob
-            label={t.reverb} value={reverbPct}
-            onChange={setReverbPct}
-            title={t.reverbTitle}
-            color="#60a5fa" valColor="#93c5fd" fmt={v => `${v}%`}
-          />
-        </div>
-
-      </div>
-
-      {/* Right: file actions + language toggle + close button */}
-      <div className={styles.right}>
-        {/* Demo tracks dropdown */}
-        <div className={styles.demoWrapper}>
-          <button
-            className={styles.demoBtn}
-            title={t.demoBtnTitle}
-            onClick={() => setDemoOpen(o => !o)}
-          >
-            {t.demoBtn} ▾
-          </button>
-          {demoOpen && (
-            <ul className={styles.demoMenu} role="menu">
-              {DEMO_TRACKS.map(demo => (
-                <li key={demo.id} role="menuitem">
-                  <button
-                    className={styles.demoMenuItem}
-                    onClick={() => {
-                      setDemoOpen(false);
-                      const hasGrids = Object.keys(state.progressions).length > 0;
-                      if (hasGrids) {
-                        setPendingDemo(demo);
-                      } else {
-                        loadDemo(demo);
-                      }
-                    }}
-                  >
-                    {locale === 'fr' ? demo.labelFr : demo.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
+        {/* Centre: transport controls */}
+        <div className={styles.transport}>
+          {/* Play / Pause / Resume / Stop */}
+          {!isPlaying && !isPaused && (
+            <button className={styles.playBtn} title={t.playTitle} onClick={handlePlay}>▶</button>
           )}
+          {isPlaying && (
+            <>
+              <button className={styles.playBtn} title={t.pauseTitle} onClick={pause}>⏸</button>
+              <button className={`${styles.playBtn} ${styles.stopBtn}`} title={t.stopTitle} onClick={stop}>■</button>
+            </>
+          )}
+          {isPaused && (
+            <>
+              <button className={styles.playBtn} title={t.resumeTitle} onClick={resume}>▶</button>
+              <button className={`${styles.playBtn} ${styles.stopBtn}`} title={t.stopTitle} onClick={stop}>■</button>
+            </>
+          )}
+
+          {/* BPM */}
+          <div className={styles.bpmGroup}>
+            <input
+              type="number"
+              className={styles.bpmInput}
+              value={bpm}
+              min={0} max={1000}
+              title={t.bpmTitle}
+              onChange={e => adjustBpm(Number(e.target.value) - bpm)}
+            />
+            <span className={styles.bpmLabel}>{t.bpm}</span>
+          </div>
+
+          {/* ── Secondary controls (hidden on mobile, shown in drawer) ── */}
+          <div className={styles.secondaryControls}>
+
+            {/* Time signature */}
+            <select
+              className={styles.headerSelect}
+              value={timeSig}
+              title={t.timeSigTitle}
+              onChange={e => dispatch({ type: 'SET_TIME_SIG', timeSig: e.target.value })}
+            >
+              {TIME_SIGS.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+
+            {/* Groove selector */}
+            <select
+              className={styles.headerSelect}
+              value={groove}
+              title={t.grooveTitle}
+              onChange={e => dispatch({ type: 'SET_GROOVE', groove: e.target.value })}
+            >
+              <option value="straight">{t.grooveStraight}</option>
+              <option value="shuffle">{t.grooveShuffle}</option>
+              <option value="swing">{t.grooveSwing}</option>
+            </select>
+
+            {/* Instrument */}
+            <select
+              className={styles.headerSelect}
+              value={instrument}
+              title={t.instrumentTitle}
+              onChange={e => {
+                dispatch({ type: 'SET_INSTRUMENT', instrument: e.target.value });
+                updateLiveInstrument(e.target.value);
+              }}
+            >
+              {INSTRUMENTS.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+
+            {/* Auto-play toggle */}
+            <button
+              className={`${styles.autoPlayBtn} ${autoPlay ? styles.autoPlayBtnOn : ''}`}
+              title={t.autoPlayTitle}
+              onClick={() => dispatch({ type: 'SET_AUTO_PLAY', autoPlay: !autoPlay })}
+            >▶</button>
+
+            {/* Knobs: Humanize · Velocity · Reverb */}
+            <div className={styles.knobsGroup}>
+              <Knob
+                label={t.hum} value={humanize}
+                onChange={setHumanize}
+                title={t.humTitle}
+                color="#a78bfa" fmt={v => `${v}%`}
+              />
+              <Knob
+                label={t.velocity} value={maxVelocity}
+                onChange={setMaxVelocity}
+                min={10} max={100}
+                title={t.velocityTitle}
+                color="#34d399" valColor="#6ee7b7" fmt={v => `${v}%`}
+              />
+              <Knob
+                label={t.reverb} value={reverbPct}
+                onChange={setReverbPct}
+                title={t.reverbTitle}
+                color="#60a5fa" valColor="#93c5fd" fmt={v => `${v}%`}
+              />
+            </div>
+
+          </div>{/* end .secondaryControls */}
+
+        </div>{/* end .transport */}
+
+        {/* Right: file actions + language toggle (hidden on mobile → moved to drawer) */}
+        <div className={styles.right}>
+          {/* Demo tracks dropdown */}
+          <div className={styles.demoWrapper}>
+            <button
+              className={styles.demoBtn}
+              title={t.demoBtnTitle}
+              onClick={() => setDemoOpen(o => !o)}
+            >
+              {t.demoBtn} ▾
+            </button>
+            {demoOpen && (
+              <ul className={styles.demoMenu} role="menu">
+                {DEMO_TRACKS.map(demo => (
+                  <li key={demo.id} role="menuitem">
+                    <button
+                      className={styles.demoMenuItem}
+                      onClick={() => {
+                        setDemoOpen(false);
+                        const hasGrids = Object.keys(state.progressions).length > 0;
+                        if (hasGrids) {
+                          setPendingDemo(demo);
+                        } else {
+                          loadDemo(demo);
+                        }
+                      }}
+                    >
+                      {locale === 'fr' ? demo.labelFr : demo.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <button
+            className={styles.resetBtn}
+            title={t.resetTitle}
+            onClick={() => setResetConfirm(true)}
+          >↺</button>
+          <button className={styles.langBtn} onClick={toggleLocale} title="Switch language / Changer de langue">
+            {t.languageLabel}
+          </button>
+          <button className={styles.actionBtn} title={t.saveTitle} onClick={() => {
+            const raw = state.trackName?.trim() || 'untitled';
+            const filename = raw.replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_') + '.json';
+            saveProject(state, filename);
+          }}>💾</button>
+          <button className={styles.actionBtn} title={t.loadTitle} onClick={() => fileRef.current.click()}>📂</button>
+          <button className={styles.actionBtn} title={t.exportMidiTitle} onClick={() => exportMidi(state)}>🎼</button>
+          <button className={styles.actionBtn} title={t.exportPdfTitle} onClick={() => exportPdf(state)}>📄</button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".json"
+            style={{ display: 'none' }}
+            onChange={onLoad}
+          />
         </div>
 
+        {/* Mobile-only: chevron to open/close the drawer */}
         <button
-          className={styles.resetBtn}
-          title={t.resetTitle}
-          onClick={() => setResetConfirm(true)}
-        >↺ {t.resetBtn}</button>
-        <button className={styles.langBtn} onClick={toggleLocale} title="Switch language / Changer de langue">
-          {t.languageLabel}
+          className={`${styles.drawerToggle} ${drawerOpen ? styles.drawerToggleOpen : ''}`}
+          aria-expanded={drawerOpen}
+          aria-label="More settings"
+          onClick={() => setDrawerOpen(o => !o)}
+        >
+          {drawerOpen ? '▲' : '▼'}
         </button>
-        <button className={styles.actionBtn} title={t.saveTitle} onClick={() => {
-          const raw = state.trackName?.trim() || 'untitled';
-          const filename = raw.replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_') + '.json';
-          saveProject(state, filename);
-        }}>💾</button>
-        <button className={styles.actionBtn} title={t.loadTitle} onClick={() => fileRef.current.click()}>📂</button>
-        <button className={styles.actionBtn} title={t.exportMidiTitle} onClick={() => exportMidi(state)}>🎼</button>
-        <button className={styles.actionBtn} title={t.exportPdfTitle} onClick={() => exportPdf(state)}>📄</button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".json"
-          style={{ display: 'none' }}
-          onChange={onLoad}
-        />
-      </div>
+
+      </div>{/* end .primaryRow */}
+
+      {/* ── MOBILE DRAWER ────────────────────────────────────────
+          Collapsed by default; opens under the primary row.
+          Contains: time-sig, groove, instrument, auto-play,
+                    knobs, file actions, language, demo, reset.   */}
+      <div className={`${styles.drawer} ${drawerOpen ? styles.drawerOpen : ''}`}>
+
+        {/* Row 1: selects */}
+        <div className={styles.drawerRow}>
+          <select
+            className={styles.headerSelect}
+            value={timeSig}
+            title={t.timeSigTitle}
+            onChange={e => dispatch({ type: 'SET_TIME_SIG', timeSig: e.target.value })}
+          >
+            {TIME_SIGS.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+
+          <select
+            className={styles.headerSelect}
+            value={groove}
+            title={t.grooveTitle}
+            onChange={e => dispatch({ type: 'SET_GROOVE', groove: e.target.value })}
+          >
+            <option value="straight">{t.grooveStraight}</option>
+            <option value="shuffle">{t.grooveShuffle}</option>
+            <option value="swing">{t.grooveSwing}</option>
+          </select>
+
+          <select
+            className={styles.headerSelect}
+            value={instrument}
+            title={t.instrumentTitle}
+            onChange={e => {
+              dispatch({ type: 'SET_INSTRUMENT', instrument: e.target.value });
+              updateLiveInstrument(e.target.value);
+            }}
+          >
+            {INSTRUMENTS.map(({ value, label }) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+
+          <button
+            className={`${styles.autoPlayBtn} ${autoPlay ? styles.autoPlayBtnOn : ''}`}
+            title={t.autoPlayTitle}
+            onClick={() => dispatch({ type: 'SET_AUTO_PLAY', autoPlay: !autoPlay })}
+          >▶ {t.autoPlay}</button>
+        </div>
+
+        {/* Row 2: knobs */}
+        <div className={styles.drawerRow}>
+          <div className={styles.knobsGroup}>
+            <Knob
+              label={t.hum} value={humanize}
+              onChange={setHumanize}
+              title={t.humTitle}
+              color="#a78bfa" fmt={v => `${v}%`}
+            />
+            <Knob
+              label={t.velocity} value={maxVelocity}
+              onChange={setMaxVelocity}
+              min={10} max={100}
+              title={t.velocityTitle}
+              color="#34d399" valColor="#6ee7b7" fmt={v => `${v}%`}
+            />
+            <Knob
+              label={t.reverb} value={reverbPct}
+              onChange={setReverbPct}
+              title={t.reverbTitle}
+              color="#60a5fa" valColor="#93c5fd" fmt={v => `${v}%`}
+            />
+          </div>
+        </div>
+
+        {/* Row 3: file actions + language + demo + reset */}
+        <div className={styles.drawerRow}>
+          <div className={styles.demoWrapper}>
+            <button
+              className={styles.demoBtn}
+              title={t.demoBtnTitle}
+              onClick={() => setDemoOpen(o => !o)}
+            >
+              {t.demoBtn} ▾
+            </button>
+            {demoOpen && (
+              <ul className={styles.demoMenu} role="menu">
+                {DEMO_TRACKS.map(demo => (
+                  <li key={demo.id} role="menuitem">
+                    <button
+                      className={styles.demoMenuItem}
+                      onClick={() => {
+                        setDemoOpen(false);
+                        const hasGrids = Object.keys(state.progressions).length > 0;
+                        if (hasGrids) {
+                          setPendingDemo(demo);
+                        } else {
+                          loadDemo(demo);
+                        }
+                      }}
+                    >
+                      {locale === 'fr' ? demo.labelFr : demo.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <button
+            className={styles.resetBtn}
+            title={t.resetTitle}
+            onClick={() => setResetConfirm(true)}
+          >↺</button>
+
+          <button className={styles.langBtn} onClick={toggleLocale} title="Switch language / Changer de langue">
+            {t.languageLabel}
+          </button>
+
+          <button className={styles.actionBtn} title={t.saveTitle} onClick={() => {
+            const raw = state.trackName?.trim() || 'untitled';
+            const filename = raw.replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_') + '.json';
+            saveProject(state, filename);
+          }}>💾</button>
+          <button className={styles.actionBtn} title={t.loadTitle} onClick={() => fileRef.current.click()}>📂</button>
+          <button className={styles.actionBtn} title={t.exportMidiTitle} onClick={() => exportMidi(state)}>🎼</button>
+          <button className={styles.actionBtn} title={t.exportPdfTitle} onClick={() => exportPdf(state)}>📄</button>
+        </div>
+
+      </div>{/* end .drawer */}
+
+      {/* Reset confirmation dialog */}
+      {resetConfirm && (
+        <div className={styles.demoOverlay} role="dialog" aria-modal="true" aria-labelledby="reset-confirm-title">
+          <div className={styles.demoDialog}>
+            <p id="reset-confirm-title" className={styles.demoDialogTitle}>{t.resetConfirmTitle}</p>
+            <p className={styles.demoDialogMsg}>{t.resetConfirmMsg}</p>
+            <div className={styles.demoDialogActions}>
+              <button className={styles.demoDialogCancel} onClick={() => setResetConfirm(false)}>
+                {t.cancelBtn}
+              </button>
+              <button className={styles.resetDialogOk} onClick={() => {
+                stop();
+                dispatch({ type: 'RESET_PROJECT' });
+                setResetConfirm(false);
+              }}>
+                {t.resetConfirmOk}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reset confirmation dialog */}
       {resetConfirm && (

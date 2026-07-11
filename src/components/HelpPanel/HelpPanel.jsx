@@ -1,6 +1,9 @@
 /**
  * HelpPanel — collapsible left sidebar with context-sensitive step-by-step help.
  *
+ * On mobile (≤640 px) it renders as a fullscreen modal dialog instead of a side
+ * panel. A floating "?" button appears in the bottom-right corner to open it.
+ *
  * Props:
  *   open        boolean    — whether the panel is expanded
  *   onToggle    () => void — toggle callback
@@ -15,7 +18,7 @@
  *   }>
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styles from './HelpPanel.module.css';
 
 function Step({ step }) {
@@ -51,7 +54,62 @@ function Step({ step }) {
   );
 }
 
+/** Shared panel body (used by both side-panel and modal) */
+function HelpBody({ editorTitle, editorDesc, steps }) {
+  return (
+    <div className={styles.body}>
+      {(editorTitle || editorDesc) && (
+        <div className={styles.intro}>
+          {editorTitle && <p className={styles.introTitle}>{editorTitle}</p>}
+          {editorDesc  && <p className={styles.introDesc}>{editorDesc}</p>}
+        </div>
+      )}
+      {steps.map((step) => (
+        <Step key={step.number} step={step} />
+      ))}
+    </div>
+  );
+}
+
 export function HelpPanel({ open, onToggle, label = 'Help', editorTitle, editorDesc, steps = [] }) {
+  // Detect mobile viewport
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(pointer: coarse) and (max-width: 1024px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(pointer: coarse) and (max-width: 1024px)');
+    const handler = e => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // ── Mobile: floating button + fullscreen modal ──────────────
+  if (isMobile) {
+    return (
+      <>
+        {/* Floating help button always visible */}
+        <button
+          className={styles.mobileFab}
+          onClick={onToggle}
+          aria-label={label}
+          title={label}
+        >?</button>
+
+        {/* Full-screen modal */}
+        {open && (
+          <div className={styles.mobileOverlay} role="dialog" aria-modal="true" aria-label={label}>
+            <div className={styles.mobileDialog}>
+              <div className={styles.mobileHeader}>
+                <span className={styles.panelTitle}>? {label}</span>
+                <button className={styles.closeBtn} onClick={onToggle} title="Close">✕</button>
+              </div>
+              <HelpBody editorTitle={editorTitle} editorDesc={editorDesc} steps={steps} />
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // ── Desktop: side panel / thumb ─────────────────────────────
   if (!open) {
     return (
       <div className={styles.thumb} onClick={onToggle} title={label}>
@@ -67,17 +125,7 @@ export function HelpPanel({ open, onToggle, label = 'Help', editorTitle, editorD
         <span className={styles.panelTitle}>? {label}</span>
         <button className={styles.closeBtn} onClick={onToggle} title={label}>✕</button>
       </div>
-      <div className={styles.body}>
-        {(editorTitle || editorDesc) && (
-          <div className={styles.intro}>
-            {editorTitle && <p className={styles.introTitle}>{editorTitle}</p>}
-            {editorDesc  && <p className={styles.introDesc}>{editorDesc}</p>}
-          </div>
-        )}
-        {steps.map((step) => (
-          <Step key={step.number} step={step} />
-        ))}
-      </div>
+      <HelpBody editorTitle={editorTitle} editorDesc={editorDesc} steps={steps} />
     </div>
   );
 }

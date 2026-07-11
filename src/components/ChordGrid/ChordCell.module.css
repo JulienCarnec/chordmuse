@@ -17,6 +17,16 @@
   box-sizing: border-box;
 }
 
+/* ── Mobile: cell fills the full viewport width ─────────── */
+@media (pointer: coarse) and (max-width: 1024px) {
+  .cell {
+    width: 100%;
+    min-height: 96px;
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+}
+
 .cell.current {
   box-shadow: 0 0 0 3px #3b82f6;
 }

@@ -189,3 +189,57 @@
   stroke: #a16207;
 }
 
+
+/* ── Mobile: grid fills screen width, max 4 cells per row ─── */
+/*
+ * Available width = 100vw
+ *   - 29px  drum thumb (28px + 1px border, always visible when collapsed)
+ *   - 12px  arrangement padding (6px each side)
+ *   - 16px  trackItem padding (8px each side)
+ *   - 30px  drag handle column
+ * ≈ calc(100vw - 87px)
+ */
+@media (pointer: coarse) and (max-width: 1024px) {
+  .miniGrid {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  /* Stack table above controls */
+  .gridFrame {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .table {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    /* Remove fixed inline-flex so it fills the parent */
+    box-sizing: border-box;
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  /* Each cell: exactly 1/4 of the table row = 4 cells per row */
+  .cell {
+    flex: 0 0 25%;
+    width: 25%;
+    box-sizing: border-box;
+    height: auto;
+    aspect-ratio: 1;
+    min-width: 0;
+    font-size: 16px;
+  }
+  .cell[data-len="4"] { font-size: 14px; }
+  .cell[data-len="5"] { font-size: 13px; }
+  .cell[data-len="6"],
+  .cell[data-len="7"] { font-size: 12px; }
+}

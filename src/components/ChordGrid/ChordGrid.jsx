@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { HelpPanel } from '../HelpPanel/HelpPanel';
 import * as Tone from 'tone';
 import { useAppState } from '../../state/AppContext';
@@ -13,6 +14,7 @@ import { getChordNotesVoiced, voiceChord, CHORD_TYPES, identifyChord } from '../
 import { CHROMATIC, noteIndex, preferFlat, displayNote } from '../../theory/notes';
 import { getScaleNoteSet } from '../../theory/scales';
 import { useT } from '../../i18n/index';
+import { useTouchDrag } from '../../utils/useTouchDrag.jsx';
 import styles from './ChordGrid.module.css';
 
 const START_OCTAVE = 3; // must match PianoKeyboard's START_OCTAVE
@@ -35,6 +37,8 @@ export function ChordGrid() {
   const [selectedCellIndex, setSelectedCellIndex] = useState(null);
   const [showPiano, setShowPiano] = useState(true);
   const [showGuitar, setShowGuitar] = useState(false);
+  // armedChord: chord payload waiting to be assigned by tapping a cell
+  const [armedChord, setArmedChord] = useState(null);
   // Shared manual highlight: Set<string> of "note+octave" keyIds (e.g. "C4")
   // Piano highlights only the exact key; guitar derives pitch-class to highlight all frets.
   const [sharedHighlight, setSharedHighlight] = useState(new Set());
@@ -54,6 +58,146 @@ export function ChordGrid() {
   const [chordDropTarget, setChordDropTarget] = useState(null);
   // Whether Ctrl was held at drag-end (copy mode)
   const ctrlRef = useRef(false);
+
+  // ── Chord-source touch drag (mobile: long-press chord badge → drag to cell) ──
+  const chordDragPayloadRef  = useRef(null);  // chord object being dragged
+  const chordDragActiveRef   = useRef(false); // true once long-press fires
+  const chordDragTouchIdRef  = useRef(null);
+  const chordDragTimerRef    = useRef(null);
+  const chordDragStartRef    = useRef({ x: 0, y: 0 });
+  const chordDragDispatchRef = useRef(null);  // stable reference to current dispatch+progId
+  const [chordDragGhost, setChordDragGhost] = useState(null); // { x, y, label } | null
+
+  // Keep dispatch+prog.id accessible inside stable callbacks without stale closure
+  chordDragDispatchRef.current = { dispatch, progId: prog?.id, cellCount: prog?.cells?.length ?? 0 };
+
+  // Hit-test: return cell index or 'addCell' or null under a client point
+  function hitTestCell(clientX, clientY) {
+    for (const el of document.querySelectorAll('[data-cell-idx]')) {
+      const r = el.getBoundingClientRect();
+      if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom)
+        return Number(el.dataset.cellIdx);
+    }
+    const addBtn = document.querySelector('[data-add-cell-btn]');
+    if (addBtn) {
+      const r = addBtn.getBoundingClientRect();
+      if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom)
+        return 'addCell';
+    }
+    return null;
+  }
+
+  // Stable window handlers — created once, stored in refs
+  const chordDragMoveHandlerRef   = useRef(null);
+  const chordDragEndHandlerRef    = useRef(null);
+  const chordDragCancelHandlerRef = useRef(null);
+
+  function attachChordDragListeners() {
+    window.addEventListener('touchmove',   chordDragMoveHandlerRef.current,   { passive: false });
+    window.addEventListener('touchend',    chordDragEndHandlerRef.current,    { passive: false });
+    window.addEventListener('touchcancel', chordDragCancelHandlerRef.current, { passive: true  });
+  }
+  function detachChordDragListeners() {
+    window.removeEventListener('touchmove',   chordDragMoveHandlerRef.current);
+    window.removeEventListener('touchend',    chordDragEndHandlerRef.current);
+    window.removeEventListener('touchcancel', chordDragCancelHandlerRef.current);
+  }
+
+  // Initialise stable handlers once on mount
+  useEffect(() => {
+    chordDragMoveHandlerRef.current = (e) => {
+      const touch = [...e.touches].find(t => t.identifier === chordDragTouchIdRef.current);
+      if (!touch) return;
+      if (!chordDragActiveRef.current) {
+        const dx = touch.clientX - chordDragStartRef.current.x;
+        const dy = touch.clientY - chordDragStartRef.current.y;
+        if (Math.sqrt(dx * dx + dy * dy) > 8) {
+          clearTimeout(chordDragTimerRef.current);
+          detachChordDragListeners();
+          chordDragTouchIdRef.current = null;
+        }
+        return;
+      }
+      e.preventDefault();
+      setChordDragGhost({ x: touch.clientX, y: touch.clientY, label: chordDragPayloadRef.current?._label ?? '' });
+      const hit = hitTestCell(touch.clientX, touch.clientY);
+      setChordDropTarget(typeof hit === 'number' || hit === 'addCell' ? hit : null);
+    };
+
+    chordDragEndHandlerRef.current = (e) => {
+      clearTimeout(chordDragTimerRef.current);
+      const touch = [...e.changedTouches].find(t => t.identifier === chordDragTouchIdRef.current);
+      detachChordDragListeners();
+      chordDragTouchIdRef.current = null;
+      if (!chordDragActiveRef.current) return;
+      chordDragActiveRef.current = false;
+      setChordDragGhost(null);
+      setChordDropTarget(null);
+      if (!touch) return;
+      const hit  = hitTestCell(touch.clientX, touch.clientY);
+      const chord = chordDragPayloadRef.current;
+      chordDragPayloadRef.current = null;
+      if (!chord || hit === null) return;
+      const { dispatch: d, progId, cellCount } = chordDragDispatchRef.current;
+      if (hit === 'addCell') {
+        d({ type: 'ADD_CELL',       progressionId: progId });
+        d({ type: 'SET_CELL_CHORD', progressionId: progId, cellIndex: cellCount, chord });
+      } else {
+        d({ type: 'SET_CELL_CHORD', progressionId: progId, cellIndex: hit, chord });
+      }
+    };
+
+    chordDragCancelHandlerRef.current = () => {
+      clearTimeout(chordDragTimerRef.current);
+      detachChordDragListeners();
+      chordDragTouchIdRef.current  = null;
+      chordDragActiveRef.current   = false;
+      chordDragPayloadRef.current  = null;
+      setChordDragGhost(null);
+      setChordDropTarget(null);
+    };
+
+    return () => detachChordDragListeners(); // cleanup on unmount
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Called from the chord badge's onTouchStart
+  function startChordDrag(e, payload) {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    chordDragPayloadRef.current   = payload;
+    chordDragActiveRef.current    = false;
+    chordDragTouchIdRef.current   = touch.identifier;
+    chordDragStartRef.current     = { x: touch.clientX, y: touch.clientY };
+    attachChordDragListeners();
+    chordDragTimerRef.current = setTimeout(() => {
+      chordDragActiveRef.current = true;
+      setChordDragGhost({ x: touch.clientX, y: touch.clientY, label: payload._label ?? '' });
+      if (navigator.vibrate) navigator.vibrate(30);
+    }, 380);
+  }
+
+  // ── Touch drag-and-drop (mobile) ───────────────────────────
+  const mainColRef = useRef(null);
+
+  const getTouchCellEl = useCallback((idx) => {
+    return document.querySelector(`[data-cell-idx="${idx}"]`);
+  }, []);
+
+  const handleTouchReorder = useCallback((from, to) => {
+    dispatch({ type: 'MOVE_CELL', progressionId: prog?.id, fromIndex: from, toIndex: to });
+  }, [dispatch, prog?.id]);
+
+  const {
+    getTouchHandlers: getCellTouchHandlers,
+    dragIndex: touchDragIndex,
+    dropIndex: touchDropIndex,
+    Ghost: CellGhost,
+  } = useTouchDrag({
+    itemCount: prog?.cells?.length ?? 0,
+    getItemEl: getTouchCellEl,
+    onReorder: handleTouchReorder,
+    scrollRef: mainColRef,
+  });
 
   const progPlayStyle   = prog?.playStyle   ?? globalPlayStyle;
   const progNoteValue   = prog?.noteValue   ?? globalNoteValue;
@@ -228,10 +372,13 @@ export function ChordGrid() {
     e.preventDefault();
     e.stopPropagation();
     if (e.dataTransfer.types.includes('application/chord')) {
-      setChordDropTarget(null);
+      // Chord from piano: highlight the + button as a valid drop target
+      setChordDropTarget('addCell');
       setDropIndex(null);
+      e.dataTransfer.dropEffect = 'copy';
       return;
     }
+    setChordDropTarget(null);
     const slot = prog.cells.length;
     if (slot !== dropIndex) setDropIndex(slot);
     e.dataTransfer.dropEffect = e.ctrlKey ? 'copy' : 'move';
@@ -248,10 +395,16 @@ export function ChordGrid() {
       dragIndexRef.current = null;
       try {
         const chord = JSON.parse(chordJson);
-        // slot here is the cell index when called from cellWrapper's onDrop
-        const cellIdx = chordDropTarget ?? slot;
-        if (typeof cellIdx === 'number' && cellIdx < prog.cells.length) {
-          dispatch({ type: 'SET_CELL_CHORD', progressionId: prog.id, cellIndex: cellIdx, chord });
+        const cellIdx = chordDropTarget === 'addCell' ? prog.cells.length : (chordDropTarget ?? slot);
+        if (typeof cellIdx === 'number') {
+          if (cellIdx >= prog.cells.length) {
+            // Drop on the + button: add a new cell then assign the chord
+            dispatch({ type: 'ADD_CELL', progressionId: prog.id });
+            // ADD_CELL appends synchronously in the reducer; new index = current length
+            dispatch({ type: 'SET_CELL_CHORD', progressionId: prog.id, cellIndex: prog.cells.length, chord });
+          } else {
+            dispatch({ type: 'SET_CELL_CHORD', progressionId: prog.id, cellIndex: cellIdx, chord });
+          }
         }
       } catch { /* ignore malformed */ }
       return;
@@ -290,7 +443,7 @@ export function ChordGrid() {
       />
 
       {/* ── Main content column ─────────────────────────────── */}
-      <div className={styles.mainCol}>
+      <div className={styles.mainCol} ref={mainColRef}>
 
       {/* ── Editor header: progression name + close button ── */}
       <div className={styles.editorHeader}>
@@ -376,6 +529,9 @@ export function ChordGrid() {
 
       </div>
 
+      {/* Touch-drag ghost — rendered into <body> via portal */}
+      {CellGhost}
+
       {/* ── Grid rows — max 4 cells per row ─────────────────── */}
       <div
         className={styles.gridRows}
@@ -389,20 +545,38 @@ export function ChordGrid() {
               {row.map((cell, colIdx) => {
                 const globalIdx = rowIdx * CELLS_PER_ROW + colIdx;
                 const isSelected = selectedCellIndex === globalIdx;
-                const isDragging = dragIndexRef.current === globalIdx;
-                const showDropBefore = dropIndex === globalIdx;
+                // isDragging: either HTML5 drag (desktop) or touch drag (mobile)
+                const isDragging = dragIndexRef.current === globalIdx || touchDragIndex === globalIdx;
+                // showDropBefore: HTML5 slot OR touch slot
+                const effectiveDropIndex = touchDropIndex ?? dropIndex;
+                const showDropBefore = effectiveDropIndex === globalIdx;
                 const isChordDropTarget = chordDropTarget === globalIdx;
+                // Chord label for touch ghost
+                const chordLabelText = cell.chord
+                  ? (cell.chord.root + (cell.chord.typeKey ?? ''))
+                  : '?';
                 return (
                   <div key={cell.id} className={styles.cellOuter}>
                     {showDropBefore && <div className={styles.dropIndicator} />}
                     <div
                       className={`${styles.cellWrapper} ${isSelected ? styles.cellSelected : ''} ${isDragging ? styles.cellDragging : ''} ${isChordDropTarget ? styles.cellChordDrop : ''}`}
+                      data-cell-idx={globalIdx}
+                      data-drag-label={chordLabelText}
                       draggable
                       onDragStart={e => handleDragStart(e, globalIdx)}
                       onDragOver={e => handleDragOver(e, globalIdx)}
                       onDrop={e => handleDrop(e, globalIdx)}
                       onDragEnd={handleDragEnd}
-                      onClick={() => handleCellSelect(globalIdx, cell.chord)}
+                      onClick={() => {
+                        if (armedChord) {
+                          dispatch({ type: 'SET_CELL_CHORD', progressionId: prog.id, cellIndex: globalIdx, chord: armedChord });
+                          handleCellSelect(globalIdx, armedChord);
+                          setArmedChord(null);
+                        } else {
+                          handleCellSelect(globalIdx, cell.chord);
+                        }
+                      }}
+                      {...getCellTouchHandlers(globalIdx)}
                     >
                       <ChordCell
                         cell={cell}
@@ -446,17 +620,27 @@ export function ChordGrid() {
                 );
               })}
 
-              {isLastRow && dropIndex === prog.cells.length && (
+              {isLastRow && (touchDropIndex ?? dropIndex) === prog.cells.length && (
                 <div className={styles.dropIndicatorAfter} />
               )}
 
               {isLastRow && (
                 <button
-                  className={styles.addCell}
+                  className={`${styles.addCell} ${armedChord ? styles.addCellArmed : ''}`}
                   title={t.addCellTitle}
+                  data-add-cell-btn="1"
                   onDragOver={handleDragOverAfterLast}
+                  onDragLeave={() => setChordDropTarget(null)}
                   onDrop={e => handleDrop(e, prog.cells.length)}
-                  onClick={addCell}
+                  onClick={() => {
+                    if (armedChord) {
+                      dispatch({ type: 'ADD_CELL', progressionId: prog.id });
+                      dispatch({ type: 'SET_CELL_CHORD', progressionId: prog.id, cellIndex: prog.cells.length, chord: armedChord });
+                      setArmedChord(null);
+                    } else {
+                      addCell();
+                    }
+                  }}
                 >+</button>
               )}
             </div>
@@ -493,16 +677,24 @@ export function ChordGrid() {
                 <button className={styles.clearBtn} onClick={() => setSharedHighlight(new Set())}>{t.pianoClear}</button>
               )}
               {detectedLabel && (detectedChord || undeterminedDraggable) && (
-                <span
-                  className={`${styles.detectedChord} ${styles.detectedChordDraggable}`}
+                <button
+                  className={`${styles.detectedChord} ${styles.detectedChordDraggable} ${armedChord ? styles.detectedChordArmed : ''}`}
                   draggable
-                  title={t.dragChordToCell}
+                  title={armedChord ? t.chordArmed : t.tapChordToAssign}
+                  onTouchStart={e => {
+                    const payload = detectedChord ?? undeterminedDraggable;
+                    startChordDrag(e, { ...payload, _label: detectedLabel });
+                  }}
+                  onClick={() => {
+                    const payload = detectedChord ?? undeterminedDraggable;
+                    setArmedChord(prev => (prev ? null : payload));
+                  }}
                   onDragStart={e => {
                     const payload = detectedChord ?? undeterminedDraggable;
                     e.dataTransfer.setData('application/chord', JSON.stringify(payload));
                     e.dataTransfer.effectAllowed = 'copy';
                   }}
-                >{detectedLabel}</span>
+                >{detectedLabel}{armedChord ? ' ✓' : ''}</button>
               )}
             </div>
           )}
@@ -557,6 +749,28 @@ export function ChordGrid() {
       </div>
 
       </div>{/* end .mainCol */}
+
+      {/* ── Chord touch-drag ghost ───────────────────────────── */}
+      {chordDragGhost && createPortal(
+        <div style={{
+          position: 'fixed',
+          left: chordDragGhost.x - 40,
+          top:  chordDragGhost.y - 20,
+          padding: '6px 14px',
+          background: '#7c3aed',
+          color: '#fff',
+          borderRadius: 8,
+          fontSize: 14,
+          fontWeight: 700,
+          pointerEvents: 'none',
+          zIndex: 9999,
+          whiteSpace: 'nowrap',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+        }}>
+          {chordDragGhost.label}
+        </div>,
+        document.body
+      )}
 
     </div>
   );
