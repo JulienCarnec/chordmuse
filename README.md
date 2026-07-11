@@ -1,4 +1,4 @@
-# 🎵 Chord Progressions Editor
+# 🎵 ChordCraft
 
 A personal React web app for composing, visualising, and playing back chord progressions. Build chord grids with scale-aware harmony highlighting, arrange them into a full track, and export to MIDI or PDF.
 

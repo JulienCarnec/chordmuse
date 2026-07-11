@@ -1,6 +1,6 @@
 # Project Overview
 
-## What This Project Is
+## What This Project Is — ChordCraft
 
 A personal React web app for composing, visualising, and playing back chord progressions. It helps musicians build chord grids with scale-aware harmony highlighting, interact with a piano keyboard and guitar fretboard, arrange progressions into full tracks — with audio playback, MIDI export, and PDF export.
 
