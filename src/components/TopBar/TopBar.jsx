@@ -46,11 +46,12 @@ export function TopBar({ onLoad }) {
   const { play, stop, pause, resume, updateLiveParams, updateLiveInstrument, reschedule, updateDrumRows } = usePlayback();
   const { setReverbWet } = useSampler();
   const fileRef = useRef();
-  const [humanize,    setHumanize]    = useState(50);
-  const [maxVelocity, setMaxVelocity] = useState(80);
-  const [reverbPct,   setReverbPct]   = useState(50);
-  const [demoOpen,    setDemoOpen]    = useState(false);
-  const [pendingDemo, setPendingDemo] = useState(null); // { id, build, label }
+  const [humanize,      setHumanize]      = useState(50);
+  const [maxVelocity,   setMaxVelocity]   = useState(80);
+  const [reverbPct,     setReverbPct]     = useState(50);
+  const [demoOpen,      setDemoOpen]      = useState(false);
+  const [pendingDemo,   setPendingDemo]   = useState(null); // { id, build, label }
+  const [resetConfirm,  setResetConfirm]  = useState(false);
 
   // Keep liveParams in sync with knobs at all times (including on first render).
   const {
@@ -353,6 +354,11 @@ export function TopBar({ onLoad }) {
           )}
         </div>
 
+        <button
+          className={styles.resetBtn}
+          title={t.resetTitle}
+          onClick={() => setResetConfirm(true)}
+        >↺ {t.resetBtn}</button>
         <button className={styles.langBtn} onClick={toggleLocale} title="Switch language / Changer de langue">
           {t.languageLabel}
         </button>
@@ -372,6 +378,28 @@ export function TopBar({ onLoad }) {
           onChange={onLoad}
         />
       </div>
+
+      {/* Reset confirmation dialog */}
+      {resetConfirm && (
+        <div className={styles.demoOverlay} role="dialog" aria-modal="true" aria-labelledby="reset-confirm-title">
+          <div className={styles.demoDialog}>
+            <p id="reset-confirm-title" className={styles.demoDialogTitle}>{t.resetConfirmTitle}</p>
+            <p className={styles.demoDialogMsg}>{t.resetConfirmMsg}</p>
+            <div className={styles.demoDialogActions}>
+              <button className={styles.demoDialogCancel} onClick={() => setResetConfirm(false)}>
+                {t.cancelBtn}
+              </button>
+              <button className={styles.resetDialogOk} onClick={() => {
+                stop();
+                dispatch({ type: 'RESET_PROJECT' });
+                setResetConfirm(false);
+              }}>
+                {t.resetConfirmOk}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation dialog for loading a demo over an existing project */}
       {pendingDemo && (

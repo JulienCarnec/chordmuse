@@ -4,6 +4,7 @@ import { PianoKeyboard } from '../PianoKeyboard/PianoKeyboard';
 import { GuitarFretboard } from '../GuitarFretboard/GuitarFretboard';
 import { ProgressionMiniGrid } from './ProgressionMiniGrid';
 import { DrumSequencer } from '../DrumSequencer/DrumSequencer';
+import { HelpPanel } from '../HelpPanel/HelpPanel';
 import { voiceChord } from '../../theory/chords';
 import { useSampler } from '../../audio/useSampler';
 import { usePlayback } from '../Playback/usePlayback';
@@ -24,6 +25,7 @@ export function TrackEditor() {
     instrument,
     trackName, trackDescription,
     scaleRoot, scaleKey,
+    helpOpen,
   } = state;
 
   // ── Preview: chord clicked in mini-grid ─────────────────────
@@ -183,6 +185,16 @@ export function TrackEditor() {
 
   return (
     <div className={styles.wrapper}>
+
+      {/* ── Help panel: left collapsible sidebar ─────────────── */}
+      <HelpPanel
+        open={helpOpen}
+        onToggle={() => dispatch({ type: 'SET_HELP_OPEN', open: !helpOpen })}
+        label={t.helpLabel}
+        editorTitle={t.helpTEEditorTitle}
+        editorDesc={t.helpTEEditorDesc}
+        steps={t.helpTESteps}
+      />
 
       {/* ── Main content column ─────────────────────────────── */}
       <div className={styles.mainCol}>

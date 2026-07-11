@@ -1,0 +1,212 @@
+/* ─── Collapsed thumb ──────────────────────────────────────────── */
+.thumb {
+  width: 28px;
+  flex-shrink: 0;
+  align-self: stretch;
+  background: #f9fafb;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s;
+}
+.thumb:hover { background: #f3f4f6; }
+
+.thumbIcon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.thumbLabel {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 10px;
+  font-weight: 700;
+  color: #9ca3af;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  margin-top: 8px;
+  text-transform: uppercase;
+}
+.thumb:hover .thumbLabel { color: #6b7280; }
+
+/* ─── Panel container (open) ───────────────────────────────────── */
+.panel {
+  width: 260px;
+  flex-shrink: 0;
+  align-self: stretch;
+  background: #f9fafb;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ─── Header ────────────────────────────────────────────────────── */
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 8px 12px;
+  background: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.panelTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 4px;
+  line-height: 1;
+}
+.closeBtn:hover { background: #e5e7eb; color: #374151; }
+
+/* ─── Scrollable body ───────────────────────────────────────────── */
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ─── Editor intro block ────────────────────────────────────────── */
+.intro {
+  margin: 2px 10px 10px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.introTitle {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1.3;
+}
+
+.introDesc {
+  margin: 0;
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+/* ─── Step card ─────────────────────────────────────────────────── */
+.step {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Step header row: number badge + title + chevron */
+.stepHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px 4px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+.stepHeader:hover { background: #f3f4f6; }
+.stepHeaderOpen { background: #f3f4f6; }
+
+.stepNumber {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  margin-top: 1px;
+}
+.stepHeaderOpen .stepNumber {
+  background: #2563eb;
+  color: #fff;
+}
+
+.stepTitle {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1.35;
+}
+
+.stepChevron {
+  font-size: 12px;
+  color: #9ca3af;
+  flex-shrink: 0;
+  margin-top: 2px;
+  line-height: 1;
+}
+.stepHeaderOpen .stepChevron { color: #2563eb; }
+
+/* Step summary — always visible below the header */
+.stepSummary {
+  margin: 0;
+  padding: 0 12px 8px 40px;
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.55;
+}
+
+/* ─── Expandable actions list ───────────────────────────────────── */
+.stepActions {
+  margin: 0 10px 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.action {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 10px;
+  border-bottom: 1px solid #f3f4f6;
+}
+.action:last-child { border-bottom: none; }
+
+.actionTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.actionBody {
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.5;
+}

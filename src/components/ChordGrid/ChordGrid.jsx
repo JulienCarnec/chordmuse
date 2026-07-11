@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { HelpPanel } from '../HelpPanel/HelpPanel';
 import * as Tone from 'tone';
 import { useAppState } from '../../state/AppContext';
 import { ChordCell } from './ChordCell';
@@ -27,7 +28,7 @@ function chunkRows(arr, size) {
 export function ChordGrid() {
   const t = useT();
   const { state, dispatch } = useAppState();
-  const { progressions, activeProgressionId, isPlaying, isPaused, playbackCursor, playbackActiveNotes, playbackNotesDuration, instrument, selectedCellChord, timeSig, globalPlayStyle, globalNoteValue, globalPatternLoop, bpm, autoPlay } = state;
+  const { progressions, activeProgressionId, isPlaying, isPaused, playbackCursor, playbackActiveNotes, playbackNotesDuration, instrument, selectedCellChord, timeSig, globalPlayStyle, globalNoteValue, globalPatternLoop, bpm, autoPlay, helpOpen } = state;
   // Per-progression pattern: fall back to global if not set on this progression
   const prog = progressions[activeProgressionId];
   const [transposeAmt, setTransposeAmt] = useState(0);
@@ -37,12 +38,6 @@ export function ChordGrid() {
   // Shared manual highlight: Set<string> of "note+octave" keyIds (e.g. "C4")
   // Piano highlights only the exact key; guitar derives pitch-class to highlight all frets.
   const [sharedHighlight, setSharedHighlight] = useState(new Set());
-  // Help: dismissed manually OR automatically when any chord is assigned
-  const hasAnyChord = prog?.cells.some(c =>
-    c.chord || (c.split && c.subCells?.some(sc => sc?.root))
-  );
-  const [helpDismissed, setHelpDismissed] = useState(false);
-  const effectiveHelpVisible = !helpDismissed && !hasAnyChord;
   const { playNotes, playArpeggio } = useSampler();
   const { updateLiveParams, updateLiveCells } = usePlayback();
   // Scale animation: Set<"note+octave"> of notes currently lit during scale playback
@@ -284,6 +279,16 @@ export function ChordGrid() {
   return (
     <div className={styles.wrapper}>
 
+      {/* ── Help panel: left collapsible sidebar ─────────────── */}
+      <HelpPanel
+        open={helpOpen}
+        onToggle={() => dispatch({ type: 'SET_HELP_OPEN', open: !helpOpen })}
+        label={t.helpLabel}
+        editorTitle={t.helpCGEditorTitle}
+        editorDesc={t.helpCGEditorDesc}
+        steps={t.helpCGSteps}
+      />
+
       {/* ── Main content column ─────────────────────────────── */}
       <div className={styles.mainCol}>
 
@@ -370,28 +375,6 @@ export function ChordGrid() {
         </div>
 
       </div>
-
-      {/* ── Help screen ── */}
-      {effectiveHelpVisible && (
-        <div className={styles.helpScreen}>
-          <h3 className={styles.helpTitle}>{t.helpTitle}</h3>
-          <div className={styles.helpSteps}>
-            {[
-              [t.helpStep1Title, t.helpStep1Body],
-              [t.helpStep2Title, t.helpStep2Body],
-              [t.helpStep3Title, t.helpStep3Body],
-              [t.helpStep4Title, t.helpStep4Body],
-              [t.helpStep5Title, t.helpStep5Body],
-              [t.helpStep6Title, t.helpStep6Body],
-            ].map(([title, body]) => (
-              <div key={title} className={styles.helpStep}>
-                <strong className={styles.helpStepTitle}>{title}</strong>
-                <span className={styles.helpStepBody}>{body}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ── Grid rows — max 4 cells per row ─────────────────── */}
       <div

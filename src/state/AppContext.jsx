@@ -1,9 +1,32 @@
-import { createContext, useContext, useReducer } from 'react';
+import { createContext, useContext, useReducer, useEffect } from 'react';
 import { CHROMATIC } from '../theory/notes';
+
+// ─── Persistence key ──────────────────────────────────────────────────────────
+const LS_KEY = 'chordmuse_state_v1';
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveToStorage(state) {
+  try {
+    // Strip volatile runtime properties before persisting
+    const { isPlaying, isPaused, playbackCursor, playbackActiveNotes, playbackNotesDuration, ...rest } = state;
+    localStorage.setItem(LS_KEY, JSON.stringify(rest));
+  } catch { /* quota or private mode — silently ignore */ }
+}
 
 // ─── Initial State ────────────────────────────────────────────────────────────
 
 export const INITIAL_STATE = {
+  // Help panel open/closed (shared across track editor and chord grid editor)
+  helpOpen: false,
+
   // Global track settings
   bpm: 120,
   timeSig: '4/4',
@@ -277,6 +300,40 @@ export const INITIAL_STATE = {
   activeView: 'track',
   activeProgressionId: null,
 };
+
+// ─── Merge saved state with INITIAL_STATE ────────────────────────────────────
+// Ensures any new fields added to INITIAL_STATE are always present.
+function buildInitialState() {
+  const saved = loadFromStorage();
+  if (!saved) return INITIAL_STATE;
+
+  // Restore activeView / activeProgressionId only when the referenced
+  // progression actually exists in the saved data.
+  const savedProgId = saved.activeProgressionId;
+  const canRestoreEditor =
+    saved.activeView === 'progression' &&
+    savedProgId &&
+    (saved.progressions ?? {})[savedProgId] != null;
+
+  return {
+    ...INITIAL_STATE,
+    ...saved,
+    metronome: { ...INITIAL_STATE.metronome, ...(saved.metronome ?? {}) },
+    drumPatterns: { ...INITIAL_STATE.drumPatterns, ...(saved.drumPatterns ?? {}) },
+    drumPatternOrder: saved.drumPatternOrder?.length
+      ? saved.drumPatternOrder
+      : INITIAL_STATE.drumPatternOrder,
+    // Always reset playback state
+    isPlaying: false,
+    isPaused: false,
+    playbackCursor: null,
+    playbackActiveNotes: [],
+    // Restore the chord grid editor if the progression is still present,
+    // otherwise fall back to the track view.
+    activeView: canRestoreEditor ? 'progression' : 'track',
+    activeProgressionId: canRestoreEditor ? savedProgId : null,
+  };
+}
 
 // ─── Reducer ─────────────────────────────────────────────────────────────────
 
@@ -764,6 +821,12 @@ function reducer(state, action) {
         playbackNotes:  [],
       };
 
+    case 'RESET_PROJECT':
+      return { ...INITIAL_STATE };
+
+    case 'SET_HELP_OPEN':
+      return { ...state, helpOpen: action.open };
+
     default:
       return state;
   }
@@ -783,7 +846,13 @@ function transposeNoteLocal(note, semitones) {
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
-  const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
+  const [state, dispatch] = useReducer(reducer, undefined, buildInitialState);
+
+  // Persist state to localStorage after every change
+  useEffect(() => {
+    saveToStorage(state);
+  }, [state]);
+
   return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>;
 }
 

@@ -338,12 +338,164 @@ const en = {
     { value: 'triangle-open',  label: 'Open Triangle'    },  // GM 81 — A4
   ],
 
+  // ── Help panel — labels, titles, descriptions ─────────────────────────────
+  helpLabel:        'Help',
+  helpCGEditorTitle: 'Chord Grid Editor',
+  helpCGEditorDesc:  'A chord grid is a sequence of cells, each holding one chord. Use grids to build the harmonic content of a song section — verse, chorus, bridge — then arrange them in the Track Editor to form a full song.',
+  helpTEEditorTitle: 'Track Editor',
+  helpTEEditorDesc:  'The Track Editor is where you assemble your song. Start by creating chord grids in the left panel, then add them to the Arrangement to define the order, repetitions, and drum patterns for each section.',
+
+  // ── Help panel — Chord Grid Editor (step-by-step) ─────────────────────────
+  helpCGSteps: [
+    {
+      number: 1,
+      title: 'Choose a scale',
+      summary: 'Pick a root note and mode in the Scale panel. Chord cells colour-code automatically: green = in-scale, amber = dominant, purple = subdominant.',
+      actions: [
+        { title: 'Root & Mode selectors', body: 'Click the first dropdown to pick the root note (C, D♭, …), then the second to pick the mode (Major, Dorian, Minor…).' },
+        { title: 'Cell length', body: 'The "Cell length" selector sets how long each cell lasts when played: Whole, Half, Quarter or Eighth note.' },
+      ],
+    },
+    {
+      number: 2,
+      title: 'Assign chords to cells',
+      summary: 'Click any cell (or the + inside it) to open the chord picker. Chords are sorted by harmonic role — in-scale chords appear first.',
+      actions: [
+        { title: 'Chord picker', body: 'Click the chord name label or the + sign in an empty cell. Scroll through chord types; click one to assign it.' },
+        { title: 'Add / remove cells', body: 'Click + (green dashed button) to add a cell at the end. Click × below any cell to delete it (disabled when only one cell remains).' },
+        { title: 'Split a cell', body: 'Click ⊢ to split a cell into two sub-cells — place two chords within one bar. Click ⊣ to merge them back.' },
+        { title: 'Drag to reorder', body: 'Grab a cell and drag it left or right to reorder. Hold Ctrl while releasing to copy instead of move.' },
+      ],
+    },
+    {
+      number: 3,
+      title: 'Refine voicings',
+      summary: 'Adjust the inversion and octave of any assigned chord to control which note sounds in the bass and how high the chord sits.',
+      actions: [
+        { title: 'Set an inversion', body: 'After selecting a cell, click any note button shown beneath the chord name to make that note the bass — creating a slash chord (e.g. C/E).' },
+        { title: 'Octave picker', body: 'Use the Oct ▾ selector inside a cell to shift the base octave up or down.' },
+        { title: 'Pick inversion on Piano', body: 'With a cell selected, click the desired bass note on the Piano keyboard to set the inversion directly.' },
+      ],
+    },
+    {
+      number: 4,
+      title: 'Set a playback pattern',
+      summary: 'The Pattern panel defines how chords are played — strummed, arpeggiated, or a custom figure. The setting is global by default but can be overridden per cell.',
+      actions: [
+        { title: 'Global pattern', body: 'Use the Pattern dropdown in the panel to pick a built-in style (block chord, arpeggio up, reggae…). Changes apply to the whole grid unless a cell overrides it.' },
+        { title: 'Note value & loop', body: 'The note value sets the step duration; Loop repeats the pattern to fill the bar.' },
+        { title: 'Per-cell override', body: 'Click the ♩ button inside a cell to set a different pattern for that cell only.' },
+        { title: 'Custom pattern editor', body: 'Choose "✎ New pattern…" to open the step editor. Write a pattern string, preview it, name it, and save for reuse.' },
+      ],
+    },
+    {
+      number: 5,
+      title: 'Use Piano & Guitar',
+      summary: 'Toggle the visualisers below the grid to explore scales, build chords by ear, or pick inversions visually.',
+      actions: [
+        { title: 'Show / hide', body: 'Click 🎹 Piano or 🎸 Guitar above the visualiser section to toggle each instrument.' },
+        { title: 'Play Scale', body: 'Click "▶ Scale" to hear and see the scale notes animate in sequence on the keyboard.' },
+        { title: 'Manual highlight', body: 'Click any key or fret to light it up. Build a chord manually — when recognised, the chord label appears and can be dragged into a cell.' },
+      ],
+    },
+    {
+      number: 6,
+      title: 'Play back',
+      summary: 'Press Play in the toolbar. The active cell highlights in blue. Use Pause to hold position, Stop to reset.',
+      actions: [
+        { title: 'Play / Pause / Stop', body: 'Use the ▶ / ⏸ / ■ buttons in the top bar. Playback loops the grid continuously until stopped.' },
+        { title: 'Transpose the grid', body: 'Enter a semitone count (+ for up, − for down) in the Transpose field and click Apply to shift all chords at once.' },
+        { title: 'Auto-play on select', body: 'When Auto-play is on, clicking a cell immediately plays the chord through the selected instrument.' },
+      ],
+    },
+  ],
+
+  // ── Help panel — Track Editor (step-by-step) ──────────────────────────────
+  helpTESteps: [
+    {
+      number: 1,
+      title: 'Name your track',
+      summary: 'Give your song a name and optional description to keep things organised.',
+      actions: [
+        { title: 'Track name', body: 'Click the large text field at the top of the editor and type the track name.' },
+        { title: 'Description', body: 'Use the text area below the name for lyrics, notes, chord symbols, or any other per-song context.' },
+      ],
+    },
+    {
+      number: 2,
+      title: 'Create chord grids',
+      summary: 'A chord grid is a named sequence of cells, each holding one chord. Create one grid per section of your song (Intro, Verse, Chorus…).',
+      actions: [
+        { title: 'New grid', body: 'Click "+ New Grid" at the bottom of the left panel. Enter a name (or pick a preset like Intro, Verse…), set the number of cells, and choose a default cell length.' },
+        { title: 'Edit a grid', body: 'Click "✎ Edit" on a grid card to open the Chord Grid Editor. Use "Close editor →" to return.' },
+        { title: 'Rename', body: 'Click the grid name on its card to edit it inline. Press Enter or click elsewhere to confirm, Esc to cancel.' },
+        { title: 'Duplicate', body: 'Click ⧉ on a card to create an independent copy with all chords intact.' },
+        { title: 'Delete', body: 'Click 🗑 on a card. Any arrangement entries using that grid are removed at the same time.' },
+      ],
+    },
+    {
+      number: 3,
+      title: 'Build the arrangement',
+      summary: 'Drag grids from the library into the Arrangement to define the play order of your song.',
+      actions: [
+        { title: 'Add a section', body: 'Click "+ Add" on a grid card to append it as the next section in the arrangement.' },
+        { title: 'Reorder sections', body: 'Grab the ⠿ handle on a tile and drag it up or down to reorder. Hold Ctrl while dropping to copy the section.' },
+        { title: 'Set repetitions', body: 'Use the × number input on a tile to set how many times that section repeats before moving on.' },
+        { title: 'Collapse / expand', body: 'Click ▼ / ▶ on a tile header to hide or show the mini chord grid preview.' },
+        { title: 'Remove a section', body: 'Click × in the tile controls to remove it from the arrangement. The grid in the library is unaffected.' },
+      ],
+    },
+    {
+      number: 4,
+      title: 'Add drum patterns',
+      summary: 'Open the Drum Sequencer (🥁 thumb on the right edge) to create beat patterns and assign them to specific arrangement sections.',
+      actions: [
+        { title: 'Open / collapse', body: 'Click the 🥁 thumb to expand the sequencer. Click ✕ in the header to collapse it again.' },
+        { title: 'Enable / disable', body: 'Use the ON/OFF button in the sequencer header. OFF silences drums even if patterns are assigned.' },
+        { title: 'Program a pattern', body: 'Click a step to toggle it (cycles: red = full velocity → orange → yellow → off). Adjust volume and reverb per row with the knobs.' },
+        { title: 'Load a preset', body: 'Use the Preset dropdown to load a factory pattern (Rock, Funk, Bossa Nova…). Confirm if the current pattern has steps.' },
+        { title: 'Save a pattern', body: 'Type a name in "Save as" and click Save. Existing name = update; new name = new entry.' },
+        { title: 'Assign to a section', body: 'Click "📌 Assign to section" and pick a tile from the popup. A 🥁 badge appears on the tile.' },
+        { title: 'Remove from section', body: 'Click × on the 🥁 badge in the arrangement tile to detach that pattern.' },
+      ],
+    },
+    {
+      number: 5,
+      title: 'Play back',
+      summary: 'Press Play in the toolbar to hear the full arrangement in order. Click any tile or cell to jump to that point.',
+      actions: [
+        { title: 'Play / Pause / Stop', body: 'Use ▶ / ⏸ / ■ in the top bar. The active section and chord highlight in real time.' },
+        { title: 'Jump to a section', body: 'While playing, click a tile header or any chord cell in the mini-grid to seek to that position.' },
+        { title: 'Instrument & tempo', body: 'Change instrument, BPM, time signature, groove, reverb and velocity in the TopBar. These apply to the whole track.' },
+      ],
+    },
+    {
+      number: 6,
+      title: 'Save & export',
+      summary: 'Your project is auto-saved to your browser. Use the toolbar buttons to export or share.',
+      actions: [
+        { title: 'Auto-save', body: 'The project is saved automatically in your browser\'s local storage every time you make a change. Reload the page to restore your last session.' },
+        { title: 'Save to file', body: 'Click 💾 to download a .json project file. Use 📂 to load it back.' },
+        { title: 'MIDI export', body: 'Click 🎼 to export the full arrangement as a MIDI file.' },
+        { title: 'PDF export', body: 'Click 📄 to export a chord sheet as PDF.' },
+        { title: 'Reset', body: 'Click ↺ Reset in the toolbar to clear everything and start from a blank project (confirmation required).' },
+      ],
+    },
+  ],
+
   // Demo tracks
   demoBtn:               '🎵 Demo',
   demoBtnTitle:          'Load a demo track',
   demoConfirmTitle:      'Load demo track?',
   demoConfirmMsg:        'Loading a demo will replace your current project. Unsaved changes will be lost.',
   demoConfirmOk:         'Load demo',
+
+  // Reset project
+  resetBtn:              'Reset',
+  resetTitle:            'Reset project — clear all grids and start fresh',
+  resetConfirmTitle:     'Reset project?',
+  resetConfirmMsg:       'This will clear all chord grids, arrangement, and drum patterns. This cannot be undone.',
+  resetConfirmOk:        'Reset',
 
   // Language toggle
   languageLabel:         'FR',
@@ -681,12 +833,164 @@ const fr = {
     { value: 'triangle-open',  label: 'Triangle ouvert'     },  // GM 81
   ],
 
+  // ── Help panel — étiquettes, titres, descriptions ─────────────────────────
+  helpLabel:        'Aide',
+  helpCGEditorTitle: 'Éditeur de grille d\'accords',
+  helpCGEditorDesc:  'Une grille d\'accords est une suite de cellules, chacune contenant un accord. Utilisez les grilles pour construire le contenu harmonique d\'une section de morceau (couplet, refrain, pont), puis organisez-les dans l\'Éditeur de piste pour former un morceau complet.',
+  helpTEEditorTitle: 'Éditeur de piste',
+  helpTEEditorDesc:  'L\'Éditeur de piste vous permet d\'assembler votre morceau. Commencez par créer des grilles d\'accords dans le panneau gauche, puis ajoutez-les à l\'Arrangement pour définir l\'ordre, les répétitions et les motifs de batterie de chaque section.',
+
+  // ── Help panel — Éditeur de grille d'accords (pas-à-pas) ─────────────────
+  helpCGSteps: [
+    {
+      number: 1,
+      title: 'Choisir une gamme',
+      summary: 'Choisissez une fondamentale et un mode dans le panneau Gamme. Les cellules se colorent automatiquement : vert = dans la gamme, ambre = dominante, violet = sous-dominante.',
+      actions: [
+        { title: 'Fondamentale & mode', body: 'Cliquez le premier menu déroulant pour choisir la fondamentale (Do, Ré♭…), puis le second pour choisir le mode (Majeur, Dorien, Mineur…).' },
+        { title: 'Durée de cellule', body: 'Le sélecteur « Durée de cellule » définit la durée de chaque cellule lors de la lecture : Ronde, Blanche, Noire ou Croche.' },
+      ],
+    },
+    {
+      number: 2,
+      title: 'Assigner des accords',
+      summary: 'Cliquez sur une cellule (ou le + à l\'intérieur) pour ouvrir le sélecteur d\'accords. Les accords sont triés par rôle harmonique.',
+      actions: [
+        { title: 'Sélecteur d\'accords', body: 'Cliquez le nom de l\'accord ou le signe + dans une cellule vide. Faites défiler les types d\'accords et cliquez pour assigner.' },
+        { title: 'Ajouter / supprimer', body: 'Cliquez + (tirets verts) pour ajouter une cellule. Cliquez × sous une cellule pour la supprimer (désactivé si une seule cellule reste).' },
+        { title: 'Diviser une cellule', body: 'Cliquez ⊢ pour diviser en deux sous-cellules — deux accords par mesure. Cliquez ⊣ pour fusionner.' },
+        { title: 'Glisser pour réordonner', body: 'Saisissez une cellule et glissez-la à gauche ou à droite. Maintenez Ctrl en relâchant pour copier plutôt que déplacer.' },
+      ],
+    },
+    {
+      number: 3,
+      title: 'Affiner les voix',
+      summary: 'Ajustez le renversement et l\'octave de chaque accord pour contrôler quelle note sonne à la basse.',
+      actions: [
+        { title: 'Choisir un renversement', body: 'Après avoir sélectionné une cellule, cliquez un bouton de note sous le nom de l\'accord pour en faire la basse (accord barré, ex. Do/Mi).' },
+        { title: 'Sélecteur d\'octave', body: 'Utilisez le sélecteur Oct ▾ dans la cellule pour décaler l\'octave de base vers le haut ou le bas.' },
+        { title: 'Via le piano', body: 'Avec une cellule sélectionnée, cliquez la note souhaitée sur le clavier Piano pour régler le renversement directement.' },
+      ],
+    },
+    {
+      number: 4,
+      title: 'Choisir un motif rythmique',
+      summary: 'Le panneau Motif définit comment les accords sont joués — plaqués, arpégés ou en figure personnalisée. Réglage global par défaut, modifiable par cellule.',
+      actions: [
+        { title: 'Motif global', body: 'Utilisez le menu Motif pour choisir un style intégré (accord plaqué, arpège montant, reggae…). S\'applique à toute la grille sauf si écrasé par cellule.' },
+        { title: 'Valeur de note & boucle', body: 'La valeur de note définit la durée d\'un pas ; Boucle répète le motif pour remplir la mesure.' },
+        { title: 'Motif par cellule', body: 'Cliquez le bouton ♩ dans une cellule pour lui assigner un motif différent.' },
+        { title: 'Éditeur de motif', body: 'Choisissez « ✎ Nouveau motif… » pour ouvrir l\'éditeur. Saisissez une chaîne, écoutez-la, nommez-la et enregistrez.' },
+      ],
+    },
+    {
+      number: 5,
+      title: 'Utiliser Piano & Guitare',
+      summary: 'Activez les visualiseurs en bas de la grille pour explorer les gammes, construire des accords à l\'oreille ou choisir des renversements visuellement.',
+      actions: [
+        { title: 'Afficher / masquer', body: 'Cliquez 🎹 Piano ou 🎸 Guitare au-dessus du visualiseur pour l\'activer.' },
+        { title: 'Jouer la gamme', body: 'Cliquez « ▶ Gamme » pour entendre et voir les notes de la gamme s\'animer en séquence.' },
+        { title: 'Mise en évidence manuelle', body: 'Cliquez une touche ou une frette pour l\'allumer. Construisez un accord manuellement — s\'il est reconnu, l\'étiquette apparaît et peut être glissée dans une cellule.' },
+      ],
+    },
+    {
+      number: 6,
+      title: 'Lecture',
+      summary: 'Appuyez sur Lecture dans la barre d\'outils. La cellule active s\'illumine en bleu. Pause pour marquer la position, Stop pour revenir au début.',
+      actions: [
+        { title: 'Lecture / Pause / Stop', body: 'Utilisez les boutons ▶ / ⏸ / ■ dans la barre d\'outils. La lecture boucle la grille en continu.' },
+        { title: 'Transposer la grille', body: 'Saisissez un nombre de demi-tons (+ vers le haut, − vers le bas) dans le champ Transposer et cliquez Appliquer.' },
+        { title: 'Lecture auto', body: 'Quand la Lecture auto est activée, cliquer sur une cellule prévisualise l\'accord via l\'instrument sélectionné.' },
+      ],
+    },
+  ],
+
+  // ── Help panel — Éditeur de piste (pas-à-pas) ─────────────────────────────
+  helpTESteps: [
+    {
+      number: 1,
+      title: 'Nommer la piste',
+      summary: 'Donnez un nom et une description optionnelle à votre morceau pour rester organisé.',
+      actions: [
+        { title: 'Nom de la piste', body: 'Cliquez le grand champ de texte en haut et saisissez le nom.' },
+        { title: 'Description', body: 'Utilisez la zone de texte en dessous pour les paroles, notes ou la structure du morceau.' },
+      ],
+    },
+    {
+      number: 2,
+      title: 'Créer des grilles d\'accords',
+      summary: 'Une grille d\'accords est une suite nommée de cellules, chacune contenant un accord. Créez une grille par section du morceau (Intro, Couplet, Refrain…).',
+      actions: [
+        { title: 'Nouvelle grille', body: 'Cliquez « + Nouvelle grille » en bas du panneau gauche. Saisissez un nom (ou choisissez un préréglage), définissez le nombre de cellules et la durée par défaut.' },
+        { title: 'Éditer une grille', body: 'Cliquez « ✎ Éditer » sur une carte pour ouvrir l\'éditeur. Cliquez « Fermer l\'éditeur → » pour revenir.' },
+        { title: 'Renommer', body: 'Cliquez le nom sur la carte pour l\'éditer en ligne. Entrée ou clic ailleurs pour confirmer, Échap pour annuler.' },
+        { title: 'Dupliquer', body: 'Cliquez ⧉ pour créer une copie indépendante avec tous les accords.' },
+        { title: 'Supprimer', body: 'Cliquez 🗑. Les entrées d\'arrangement utilisant cette grille sont supprimées en même temps.' },
+      ],
+    },
+    {
+      number: 3,
+      title: 'Construire l\'arrangement',
+      summary: 'Glissez les grilles de la bibliothèque dans l\'Arrangement pour définir l\'ordre de lecture du morceau.',
+      actions: [
+        { title: 'Ajouter une section', body: 'Cliquez « + Ajouter » sur une carte pour l\'annexer comme prochaine section dans l\'arrangement.' },
+        { title: 'Réordonner', body: 'Saisissez le handle ⠿ d\'une tuile et glissez-la vers le haut ou le bas. Ctrl au dépôt pour copier.' },
+        { title: 'Répétitions', body: 'Le champ × sur une tuile définit le nombre de répétitions avant de passer à la section suivante.' },
+        { title: 'Réduire / développer', body: 'Cliquez ▼ / ▶ dans l\'en-tête d\'une tuile pour masquer ou afficher la mini-grille.' },
+        { title: 'Retirer une section', body: 'Cliquez × dans les contrôles de la tuile. La grille dans la bibliothèque n\'est pas supprimée.' },
+      ],
+    },
+    {
+      number: 4,
+      title: 'Ajouter des motifs de batterie',
+      summary: 'Ouvrez la Boîte à rythme (pouce 🥁 à droite) pour créer des motifs et les associer à des sections.',
+      actions: [
+        { title: 'Ouvrir / réduire', body: 'Cliquez le pouce 🥁 pour déployer le séquenceur. Cliquez ✕ dans l\'en-tête pour le réduire.' },
+        { title: 'Activer / désactiver', body: 'Utilisez le bouton ON/OFF dans l\'en-tête. OFF = batterie silencieuse même si des motifs sont assignés.' },
+        { title: 'Programmer un motif', body: 'Cliquez un pas pour l\'activer (rouge = fort → orange → jaune → off). Ajustez volume et réverb par rangée.' },
+        { title: 'Charger un préréglage', body: 'Utilisez le menu Préréglage pour charger un motif d\'usine (Rock, Funk, Bossa Nova…). Confirmation si le motif actuel a des pas.' },
+        { title: 'Enregistrer', body: 'Saisissez un nom dans « Enregistrer sous » et cliquez Enreg. Nom existant = mise à jour ; nouveau nom = nouvelle entrée.' },
+        { title: 'Associer à une section', body: 'Cliquez « 📌 Associer à une section » et choisissez une tuile. Un badge 🥁 apparaît sur la tuile.' },
+        { title: 'Retirer d\'une section', body: 'Cliquez × sur le badge 🥁 dans la tuile pour détacher le motif.' },
+      ],
+    },
+    {
+      number: 5,
+      title: 'Lecture',
+      summary: 'Appuyez sur Lecture pour écouter l\'arrangement complet. Cliquez une tuile ou une cellule pour sauter à cet endroit.',
+      actions: [
+        { title: 'Lecture / Pause / Stop', body: 'Utilisez ▶ / ⏸ / ■ dans la barre d\'outils. La section et la cellule actives sont mises en évidence en temps réel.' },
+        { title: 'Sauter à une section', body: 'En cours de lecture, cliquez un en-tête de tuile ou une cellule de la mini-grille pour y positionner la lecture.' },
+        { title: 'Instrument & tempo', body: 'Modifiez l\'instrument, le BPM, la signature rythmique, le groove, la réverb et la vélocité dans la barre d\'outils.' },
+      ],
+    },
+    {
+      number: 6,
+      title: 'Sauvegarder & exporter',
+      summary: 'Le projet est sauvegardé automatiquement dans le navigateur. Utilisez les boutons de la barre d\'outils pour exporter ou partager.',
+      actions: [
+        { title: 'Sauvegarde automatique', body: 'Le projet est enregistré automatiquement dans le stockage local du navigateur à chaque modification. Rechargez la page pour restaurer la dernière session.' },
+        { title: 'Sauvegarder dans un fichier', body: 'Cliquez 💾 pour télécharger un fichier .json. Utilisez 📂 pour le recharger.' },
+        { title: 'Export MIDI', body: 'Cliquez 🎼 pour exporter l\'arrangement complet en fichier MIDI.' },
+        { title: 'Export PDF', body: 'Cliquez 📄 pour exporter une fiche d\'accords en PDF.' },
+        { title: 'Réinitialiser', body: 'Cliquez ↺ Réinit. dans la barre d\'outils pour tout effacer et repartir d\'un projet vierge (confirmation requise).' },
+      ],
+    },
+  ],
+
   // Demo tracks
   demoBtn:               '🎵 Démo',
   demoBtnTitle:          'Charger une piste de démonstration',
   demoConfirmTitle:      'Charger la démo ?',
   demoConfirmMsg:        'Charger une démo remplacera votre projet actuel. Les modifications non enregistrées seront perdues.',
   demoConfirmOk:         'Charger la démo',
+
+  // Réinitialiser le projet
+  resetBtn:              'Réinit.',
+  resetTitle:            'Réinitialiser le projet — effacer tout et repartir de zéro',
+  resetConfirmTitle:     'Réinitialiser le projet ?',
+  resetConfirmMsg:       'Toutes les grilles d\'accords, l\'arrangement et les motifs de batterie seront effacés. Cette action est irréversible.',
+  resetConfirmOk:        'Réinitialiser',
 
   // Language toggle
   languageLabel:         'EN',
