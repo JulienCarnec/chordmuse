@@ -34,7 +34,7 @@ A personal React web app for composing, visualising, and playing back chord prog
 - **Playing styles** — block chord, on-beat / off-beat strum, folk strum, arpeggio up/down, bass+chord, reggae, and more; fully custom patterns via a pattern editor
 - **23 instruments** — piano, e-piano, harpsichord, organ, synths, pad, strings, choir, guitars, bass, brass, woodwinds, percussion
 - **Knobs** for humanize, velocity, and reverb
-- **Metronome** with a simple click mode or a full drum-sequencer mode (hi-hat, snare, kick, perc)
+- **Drum sequencer** — 16-step, 4-track sequencer (hi-hat, snare, kick, perc) assignable per section in the arrangement; multiple built-in patterns (Rock, Funk, Bossa Nova, Hip-Hop…)
 
 ### Piano Keyboard & Guitar Fretboard
 - Visual 2-octave piano highlights scale notes and chord notes
