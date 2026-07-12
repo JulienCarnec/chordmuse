@@ -16,7 +16,9 @@ const TIME_SIGS = ['4/4', '3/4', '6/8', '2/4', '5/4', '7/8', '12/8'];
 const INSTRUMENTS = [
   // ── Keyboards
   { value: 'piano',        label: '🎹 Piano' },
-  { value: 'epiano',       label: '🎹 E. Piano' },
+  { value: 'rhodes',       label: '🎹 Rhodes' },
+  { value: 'wurlitzer',    label: '🎹 Wurlitzer' },
+  { value: 'harpsichord',  label: '🎹 Harpsichord' },
   { value: 'organ',        label: '🎹 Organ' },
   // ── Guitars
   { value: 'guitar',       label: '🎸 Guitar (clean)' },
@@ -28,6 +30,10 @@ const INSTRUMENTS = [
   // ── Strings
   { value: 'strings',      label: '🎻 Strings' },
   { value: 'violin',       label: '🎻 Violin' },
+  // ── Mallets & bells
+  { value: 'marimba',      label: '🎵 Marimba' },
+  { value: 'xylophone',    label: '🎵 Xylophone' },
+  { value: 'bells',        label: '🔔 Bells' },
 ];
 
 export function TopBar({ onLoad }) {

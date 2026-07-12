@@ -17,6 +17,11 @@ const SPARSE_NOTES = {
 
 const MUSYNGKITE = 'https://gleitz.github.io/midi-js-soundfonts/MusyngKite/';
 
+// ─── Instrument configs ───────────────────────────────────────────────────────
+// `volume` (dB) normalises perceived loudness across samples.
+// Negative = attenuate loud sources; positive = boost quiet sources.
+// Reference target: acoustic piano at 0 dB.
+
 const INSTRUMENT_CONFIGS = {
   piano: {
     urls: {
@@ -30,43 +35,27 @@ const INSTRUMENT_CONFIGS = {
       A7: 'A7.mp3', C8: 'C8.mp3',
     },
     baseUrl: 'https://tonejs.github.io/audio/salamander/',
+    volume: 0,
   },
-  epiano: {
-    urls: SPARSE_NOTES,
-    baseUrl: `${MUSYNGKITE}electric_piano_1-mp3/`,
-  },
-  organ: {
-    urls: SPARSE_NOTES,
-    baseUrl: `${MUSYNGKITE}drawbar_organ-mp3/`,
-  },
-  pad: {
-    urls: SPARSE_NOTES,
-    baseUrl: `${MUSYNGKITE}pad_2_warm-mp3/`,
-  },
-  guitar: {
-    urls: SPARSE_NOTES,
-    baseUrl: `${MUSYNGKITE}electric_guitar_clean-mp3/`,
-  },
-  'guitar-nylon': {
-    urls: SPARSE_NOTES,
-    baseUrl: `${MUSYNGKITE}acoustic_guitar_nylon-mp3/`,
-  },
-  synth: {
-    urls: SPARSE_NOTES,
-    baseUrl: `${MUSYNGKITE}lead_2_sawtooth-mp3/`,
-  },
-  'synth-pad': {
-    urls: SPARSE_NOTES,
-    baseUrl: `${MUSYNGKITE}pad_3_polysynth-mp3/`,
-  },
-  strings: {
-    urls: SPARSE_NOTES,
-    baseUrl: `${MUSYNGKITE}string_ensemble_1-mp3/`,
-  },
-  violin: {
-    urls: SPARSE_NOTES,
-    baseUrl: `${MUSYNGKITE}violin-mp3/`,
-  },
+  // ── Keyboards
+  rhodes:     { urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}electric_piano_1-mp3/`,  volume: 0  },
+  wurlitzer:  { urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}electric_piano_2-mp3/`,  volume: +2 },
+  harpsichord:{ urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}harpsichord-mp3/`,        volume: -2 },
+  organ:      { urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}drawbar_organ-mp3/`,      volume: -3 },
+  // ── Guitars
+  guitar:       { urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}electric_guitar_clean-mp3/`, volume: +4 },
+  'guitar-nylon':{ urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}acoustic_guitar_nylon-mp3/`, volume: +3 },
+  // ── Synths & pads
+  synth:      { urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}lead_2_sawtooth-mp3/`,   volume: -2 },
+  'synth-pad':{ urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}pad_3_polysynth-mp3/`,   volume: +1 },
+  pad:        { urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}pad_2_warm-mp3/`,         volume: +3 },
+  // ── Strings
+  strings:    { urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}string_ensemble_1-mp3/`, volume: +2 },
+  violin:     { urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}violin-mp3/`,             volume: +4 },
+  // ── Mallets & bells
+  marimba:    { urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}marimba-mp3/`,            volume: +1 },
+  xylophone:  { urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}xylophone-mp3/`,          volume: 0  },
+  bells:      { urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}glockenspiel-mp3/`,       volume: -4 },
 };
 
 // ─── Shared reverb ────────────────────────────────────────────────────────────
@@ -94,6 +83,7 @@ function buildSampler(instrument) {
     const sampler = new Tone.Sampler({
       urls: config.urls,
       baseUrl: config.baseUrl,
+      volume: config.volume ?? 0,
       onload: () => {
         const s = sampler.connect(getReverb());
         samplerCache[instrument] = s;
