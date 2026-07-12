@@ -38,7 +38,7 @@ const INSTRUMENT_CONFIGS = {
     volume: 0,
   },
   // ── Keyboards
-  rhodes:     { urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}electric_piano_1-mp3/`,  volume: 0  },
+  rhodes:     { urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}electric_piano_1-mp3/`,  volume: +2  },
   wurlitzer:  { urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}electric_piano_2-mp3/`,  volume: +2 },
   harpsichord:{ urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}harpsichord-mp3/`,        volume: -2 },
   organ:      { urls: SPARSE_NOTES, baseUrl: `${MUSYNGKITE}drawbar_organ-mp3/`,      volume: -3 },
