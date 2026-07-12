@@ -17,6 +17,7 @@ const INSTRUMENTS = [
   // ── Keyboards
   { value: 'piano',        label: '🎹 Piano' },
   { value: 'epiano',       label: '🎹 E. Piano' },
+  { value: 'harpsichord',  label: '🎹 Harpsichord' },
   { value: 'organ',        label: '🎹 Organ' },
   // ── Guitars
   { value: 'guitar',       label: '🎸 Guitar (clean)' },
@@ -28,6 +29,10 @@ const INSTRUMENTS = [
   // ── Strings
   { value: 'strings',      label: '🎻 Strings' },
   { value: 'violin',       label: '🎻 Violin' },
+  // ── Mallets & bells
+  { value: 'marimba',      label: '🎵 Marimba' },
+  { value: 'xylophone',    label: '🎵 Xylophone' },
+  { value: 'bells',        label: '🔔 Bells' },
 ];
 
 export function TopBar({ onLoad }) {

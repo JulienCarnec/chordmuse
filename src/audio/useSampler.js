@@ -35,6 +35,10 @@ const INSTRUMENT_CONFIGS = {
     urls: SPARSE_NOTES,
     baseUrl: `${MUSYNGKITE}electric_piano_1-mp3/`,
   },
+  harpsichord: {
+    urls: SPARSE_NOTES,
+    baseUrl: `${MUSYNGKITE}harpsichord-mp3/`,
+  },
   organ: {
     urls: SPARSE_NOTES,
     baseUrl: `${MUSYNGKITE}drawbar_organ-mp3/`,
@@ -66,6 +70,18 @@ const INSTRUMENT_CONFIGS = {
   violin: {
     urls: SPARSE_NOTES,
     baseUrl: `${MUSYNGKITE}violin-mp3/`,
+  },
+  marimba: {
+    urls: SPARSE_NOTES,
+    baseUrl: `${MUSYNGKITE}marimba-mp3/`,
+  },
+  xylophone: {
+    urls: SPARSE_NOTES,
+    baseUrl: `${MUSYNGKITE}xylophone-mp3/`,
+  },
+  bells: {
+    urls: SPARSE_NOTES,
+    baseUrl: `${MUSYNGKITE}tubular_bells-mp3/`,
   },
 };
 
