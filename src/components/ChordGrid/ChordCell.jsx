@@ -174,9 +174,9 @@ function NotesRow({ chord, useFlat, onChange }) {
             type="number"
             className={styles.octaveInput}
             value={octave}
-            min={1} max={8}
+            min={1}
             onClick={e => e.stopPropagation()}
-            onChange={e => onChange({ ...chord, octave: Math.min(8, Math.max(1, Number(e.target.value))) })}
+            onChange={e => onChange({ ...chord, octave: Math.max(1, Number(e.target.value)) })}
           />
         </label>
       </div>
@@ -214,9 +214,9 @@ function NotesRow({ chord, useFlat, onChange }) {
           type="number"
           className={styles.octaveInput}
           value={octave}
-          min={1} max={8}
+          min={1}
           onClick={e => e.stopPropagation()}
-          onChange={e => onChange({ ...chord, octave: Math.min(8, Math.max(1, Number(e.target.value))) })}
+          onChange={e => onChange({ ...chord, octave: Math.max(1, Number(e.target.value)) })}
         />
       </label>
     </div>
