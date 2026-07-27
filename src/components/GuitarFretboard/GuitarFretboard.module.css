@@ -120,6 +120,13 @@
 }
 .dotSustain .dotLabel { color: #1f2937; }
 
+/* Chord-passive — purple dot for chord notes not currently sounding */
+.dotChordPassive {
+  background: #c084fc;
+  border: 1.5px solid #9333ea;
+}
+.dotChordPassive .dotLabel { color: #3b0764; }
+
 /* Dimmed — almost invisible grey dot for out-of-scale notes when scale is active */
 .dotDimmed {
   background: rgba(156, 163, 175, 0.18);

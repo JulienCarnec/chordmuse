@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { noteIndex, preferFlat, displayNote, CHROMATIC } from '../../theory/notes';
 import { getScaleNoteSet } from '../../theory/scales';
+import { getChordNotes } from '../../theory/chords';
 import { useSampler } from '../../audio/useSampler';
 import styles from './GuitarFretboard.module.css';
 
@@ -188,10 +189,20 @@ export function GuitarFretboard({
   // Manual highlight derives pitch-class set so all fret positions of a note light up
   const manualPitchClasses = new Set([...manualHighlight].map(pitchClass));
 
-  // Chord pitch-class set (from selectedChord voiced notes)
+  // Chord pitch-class set — sounding notes during playback
   const chordPitchClasses = new Set();
-  if (selectedChord && playbackNotes?.length) {
-    for (const kid of playbackNotes) chordPitchClasses.add(pitchClass(kid));
+  if (selectedChord) {
+    for (const kid of playbackNotes ?? []) chordPitchClasses.add(pitchClass(kid));
+  }
+
+  // Full chord pitch-class set — ALL notes of the chord (playing or not)
+  const isPlaybackActive = (playbackNotes?.length ?? 0) > 0;
+  const fullChordPitchClasses = new Set();
+  if (selectedChord && isPlaybackActive) {
+    const chordNoteNames = selectedChord.typeKey
+      ? getChordNotes(selectedChord.root, selectedChord.typeKey)
+      : (selectedChord.customNotes ?? []);
+    for (const n of chordNoteNames) fullChordPitchClasses.add(noteIndex(n));
   }
 
   // playingScale pitch-class set
@@ -353,16 +364,18 @@ export function GuitarFretboard({
               const isScalePlaying = scalePitchClasses.has(nIdx);
               const attacking = sustainedNotes.has(fretKey) && isAttacking(fretKey);
               const sustaining = sustainedNotes.has(fretKey) && !attacking;
-              const dimmed = hasScale && !inScale && !attacking && !sustaining && !isManual;
+              const isChordPassive = fullChordPitchClasses.has(nIdx) && !attacking && !sustaining;
+              const dimmed = hasScale && !inScale && !attacking && !sustaining && !isManual && !isChordPassive;
 
-              // Determine dot class (priority: attack > sustain > manual > scale-playing > scale > dimmed)
+              // Determine dot class (priority: attack > sustain > chordPassive > manual > scale-playing > scale > dimmed)
               let dotClass = styles.dot;
-              if (attacking)       dotClass = `${styles.dot} ${styles.dotAttack}`;
-              else if (sustaining) dotClass = `${styles.dot} ${styles.dotSustain}`;
-              else if (isManual)   dotClass = `${styles.dot} ${styles.dotManual}`;
+              if (attacking)          dotClass = `${styles.dot} ${styles.dotAttack}`;
+              else if (sustaining)    dotClass = `${styles.dot} ${styles.dotSustain}`;
+              else if (isChordPassive) dotClass = `${styles.dot} ${styles.dotChordPassive}`;
+              else if (isManual)      dotClass = `${styles.dot} ${styles.dotManual}`;
               else if (isScalePlaying) dotClass = `${styles.dot} ${styles.dotScalePlaying}`;
-              else if (inScale)    dotClass = `${styles.dot} ${styles.dotScale}`;
-              else if (dimmed)     dotClass = `${styles.dot} ${styles.dotDimmed}`;
+              else if (inScale)       dotClass = `${styles.dot} ${styles.dotScale}`;
+              else if (dimmed)        dotClass = `${styles.dot} ${styles.dotDimmed}`;
 
               // Only render a visible dot when something to show; always render a hit area
               const cx = fret === 0
@@ -381,7 +394,7 @@ export function GuitarFretboard({
                   }}
                   onClick={e => handleDotClick(e, note, octave, fretKey)}
                 >
-                  {(inScale || attacking || sustaining || isManual || isScalePlaying) && (
+                  {(inScale || attacking || sustaining || isManual || isScalePlaying || isChordPassive) && (
                     <div className={dotClass} style={{ width: DOT_R * 2, height: DOT_R * 2 }}>
                       <span className={styles.dotLabel}>{displayName}</span>
                     </div>

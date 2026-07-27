@@ -20,6 +20,7 @@ import { Knob } from '../Playback/Knob';
 import { useT } from '../../i18n/index';
 import styles from './DrumSequencer.module.css';
 
+
 // ─── SamplePicker — custom dropdown with hover-preview ───────────────────────
 // Replaces <select> so we can fire a sound preview on mouseenter of each option.
 function SamplePicker({ value, samples, onChange, onPreview, title }) {
