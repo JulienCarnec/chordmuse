@@ -255,6 +255,10 @@
 .bg_invCand     { background: #bbf7d0; }
 .bg_invFirst    { background: #4ade80; }
 
+/* Chord-not-playing — light blue: shows chord notes that aren't currently sounding */
+.bg_chordPassive   { background: #bae6fd; }  /* white key: sky-200 */
+.bg_chordPassive_b { background: #0369a1; }  /* black key: sky-700 */
+
 /* Black keys */
 .bg_highlight_b  { background: #1d4ed8; }
 .bg_attack_b     { animation: attackFlashBlack 0.2s ease-out forwards; }

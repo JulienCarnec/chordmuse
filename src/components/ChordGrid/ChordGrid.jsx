@@ -344,7 +344,12 @@ export function ChordGrid() {
       : null;
 
   const pianoPlaybackNotes = (isPlaying || isPaused) ? (playbackActiveNotes.length ? playbackActiveNotes : (playbackCursor?.notes ?? null)) : null;
-  const pianoSelectedChord = !isPlaying ? (selectedCellChord ?? firstChord) : null;
+  // During playback: use the chord of the currently playing cell so the visualisers
+  // can show chord-not-playing (light blue) notes alongside the sounding ones.
+  const playingCellChord = (isPlaying || isPaused) && playbackCursor != null
+    ? (prog.cells[playbackCursor.cellIndex]?.chord ?? null)
+    : null;
+  const pianoSelectedChord = playingCellChord ?? (!isPlaying ? (selectedCellChord ?? firstChord) : null);
 
   // ── Drag handlers ──────────────────────────────────────────
 

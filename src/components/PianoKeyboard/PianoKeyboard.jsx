@@ -46,15 +46,17 @@ function blackKeyDisplayName(sharpName, scaleRoot, scaleKey) {
  * 3. Inversion-candidate (green)
  * 4. Chord glow (purple, 3-second fade)
  * 5. Manual highlight (blue)
+ * 6. Chord-not-playing (light blue) — chord note not yet/no longer sounding during playback
  * (Scale never sets background — dots only)
  */
-function bgClass(isBlack, { attack, sustain, highlight, invCandidate, invFirst, chordGlow }) {
-  if (attack)       return isBlack ? styles.bg_attack_b    : styles.bg_attack;
-  if (sustain)      return isBlack ? styles.bg_sustain_b   : styles.bg_sustain;
-  if (invFirst)     return isBlack ? styles.bg_invFirst_b  : styles.bg_invFirst;
-  if (invCandidate) return isBlack ? styles.bg_invCand_b   : styles.bg_invCand;
-  if (chordGlow)    return isBlack ? styles.bg_chordGlow_b : styles.bg_chordGlow;
-  if (highlight)    return isBlack ? styles.bg_highlight_b : styles.bg_highlight;
+function bgClass(isBlack, { attack, sustain, highlight, invCandidate, invFirst, chordGlow, chordNotPlaying }) {
+  if (attack)          return isBlack ? styles.bg_attack_b       : styles.bg_attack;
+  if (sustain)         return isBlack ? styles.bg_sustain_b      : styles.bg_sustain;
+  if (invFirst)        return isBlack ? styles.bg_invFirst_b     : styles.bg_invFirst;
+  if (invCandidate)    return isBlack ? styles.bg_invCand_b      : styles.bg_invCand;
+  if (chordGlow)       return isBlack ? styles.bg_chordGlow_b    : styles.bg_chordGlow;
+  if (highlight)       return isBlack ? styles.bg_highlight_b    : styles.bg_highlight;
+  if (chordNotPlaying) return isBlack ? styles.bg_chordPassive_b : styles.bg_chordPassive;
   return '';
 }
 
@@ -195,6 +197,9 @@ export function PianoKeyboard({
     ? getChordNotes(selectedChord.root, selectedChord.typeKey)   // e.g. ['C','E','G']
     : [];
 
+  // isPlaybackActive: true while any chord note is sounding
+  const isPlaybackActive = (playbackNotes?.length ?? 0) > 0;
+
   // playbackSet: the notes fired in this exact dispatch (for attack detection)
   const playbackSet = new Set(playbackNotes ?? []);
   // Helper: is a keyId in attack phase?
@@ -242,17 +247,19 @@ export function PianoKeyboard({
           const isChordNote = chordNoteSet.has(nIdx);
           const isAttack    = playbackSet.has(id) && isAttacking(id);
           const isSustain   = sustainedNotes.has(id) && !isAttack;
+          const isChordNotPlaying = isPlaybackActive && chordHighlightSet.has(id) && !isAttack && !isSustain;
           const layers = {
-            attack:       isAttack,
-            sustain:      isSustain,
-            chordGlow:    chordGlow.has(id),
-            highlight:    manualHighlight.has(id),
-            invCandidate: pickingInversion && isChordNote,
-            invFirst:     pickingInversion && isChordNote &&
-                          chordNoteNames[0] && noteIndex(chordNoteNames[selectedChord?.inversion ?? 0]) === nIdx,
-            scale:        scaleNoteSet.has(nIdx),
+            attack:          isAttack,
+            sustain:         isSustain,
+            chordGlow:       chordGlow.has(id),
+            highlight:       manualHighlight.has(id),
+            invCandidate:    pickingInversion && isChordNote,
+            invFirst:        pickingInversion && isChordNote &&
+                             chordNoteNames[0] && noteIndex(chordNoteNames[selectedChord?.inversion ?? 0]) === nIdx,
+            scale:           scaleNoteSet.has(nIdx),
+            chordNotPlaying: isChordNotPlaying,
           };
-          const dimmed = hasScale && !layers.scale && !isAttack && !isSustain && !layers.highlight && !layers.chordGlow && !layers.invCandidate;
+          const dimmed = hasScale && !layers.scale && !isAttack && !isSustain && !layers.highlight && !layers.chordGlow && !layers.invCandidate && !isChordNotPlaying;
           return (
             <div
               key={`w-${note}${octave}`}
@@ -279,17 +286,19 @@ export function PianoKeyboard({
           const isChordNote = chordNoteSet.has(nIdx);
           const isAttack    = playbackSet.has(id) && isAttacking(id);
           const isSustain   = sustainedNotes.has(id) && !isAttack;
+          const isChordNotPlaying = isPlaybackActive && chordHighlightSet.has(id) && !isAttack && !isSustain;
           const layers = {
-            attack:       isAttack,
-            sustain:      isSustain,
-            chordGlow:    chordGlow.has(id),
-            highlight:    manualHighlight.has(id),
-            invCandidate: pickingInversion && isChordNote,
-            invFirst:     pickingInversion && isChordNote &&
-                          chordNoteNames[0] && noteIndex(chordNoteNames[selectedChord?.inversion ?? 0]) === nIdx,
-            scale:        scaleNoteSet.has(nIdx),
+            attack:          isAttack,
+            sustain:         isSustain,
+            chordGlow:       chordGlow.has(id),
+            highlight:       manualHighlight.has(id),
+            invCandidate:    pickingInversion && isChordNote,
+            invFirst:        pickingInversion && isChordNote &&
+                             chordNoteNames[0] && noteIndex(chordNoteNames[selectedChord?.inversion ?? 0]) === nIdx,
+            scale:           scaleNoteSet.has(nIdx),
+            chordNotPlaying: isChordNotPlaying,
           };
-          const dimmed = hasScale && !layers.scale && !isAttack && !isSustain && !layers.highlight && !layers.chordGlow && !layers.invCandidate;
+          const dimmed = hasScale && !layers.scale && !isAttack && !isSustain && !layers.highlight && !layers.chordGlow && !layers.invCandidate && !isChordNotPlaying;
           const displayName = blackKeyDisplayName(sharp, scaleRoot, scaleKey);
           const left = (afterWIdx + 1) * whiteW - blackW / 2;
           return (

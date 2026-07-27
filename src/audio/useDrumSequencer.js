@@ -128,12 +128,20 @@ const BASE_URL = '/samples/drums/';
 // ─── Module-level singletons ─────────────────────────────────────────────────
 // All state lives at module scope so every hook call shares the same engine.
 
-/** Tone.Players instance — loaded once, shared across all hook calls. */
-let players = null;
-/** True once players.load() has resolved. */
-let playersReady = false;
-/** Promise returned by the load — lets concurrent calls await the same load. */
-let loadPromise = null;
+/**
+ * Per-row audio chain: each rowId maps to { player, volGain, revGain }.
+ *   player  — Tone.Player for the row's current sample
+ *   volGain — Tone.Gain (linear) routing to destination; controlled by row.volume + vel
+ *   revGain — Tone.Gain (linear) routing to shared reverb; controlled by row.reverb
+ * Rebuilt whenever a row's sample changes (via ensureRowChain).
+ */
+let drumReverb  = null;
+/** rowId → { player: Tone.Player, volGain: Tone.Gain, revGain: Tone.Gain, sampleKey: string } */
+const rowChains = new Map();
+/** True once the shared reverb is ready. */
+let reverbReady = false;
+/** Promise serialising reverb creation. */
+let reverbPromise = null;
 
 let seqRef   = null;   // drum loop
 let clickRef = null;   // click track loop
@@ -144,58 +152,68 @@ const liveOverrides = { current: { hiHatCadence: 'eighth', bassPattern: 'standar
 // Callback invoked on every 16th-note step with the step index (for UI highlight)
 const onStepCbs = new Set();
 
-// ─── Players management ───────────────────────────────────────────────────────
+// ─── Audio chain management ───────────────────────────────────────────────────
 
-/** Build the url map for Tone.Players from the catalogue (deduplicated). */
-function buildUrlMap() {
-  const seen = new Set();
-  const map = {};
-  for (const [key, info] of Object.entries(SAMPLE_CATALOGUE)) {
-    if (!seen.has(info.file)) {
-      seen.add(info.file);
-      // Use the sample key as the player key (first occurrence per file)
-      map[key] = BASE_URL + info.file;
-    }
-  }
-  return map;
-}
-
-/** Returns the player key to use for a given sample key.
- *  Since multiple keys may share the same file, we need to resolve to the
- *  key that was actually registered in the Players instance. */
-function resolvePlayerKey(sampleKey) {
-  const info = SAMPLE_CATALOGUE[sampleKey];
-  if (!info) return null;
-  // Find the first catalogue key that uses the same file — that is the key
-  // that was registered in Tone.Players.
-  for (const [k, v] of Object.entries(SAMPLE_CATALOGUE)) {
-    if (v.file === info.file) return k;
-  }
-  return null;
-}
-
-async function ensurePlayers() {
-  if (playersReady && players) return players;
-  if (loadPromise) return loadPromise;
-
-  loadPromise = (async () => {
-    const urlMap = buildUrlMap();
-    players = new Tone.Players(urlMap).toDestination();
-    await Tone.loaded(); // wait until all buffers registered so far are decoded
-    playersReady = true;
-    return players;
+async function ensureReverb() {
+  if (reverbReady && drumReverb) return;
+  if (reverbPromise) { await reverbPromise; return; }
+  reverbPromise = (async () => {
+    drumReverb = new Tone.Reverb({ decay: 2.0, wet: 1.0 }).toDestination();
+    await drumReverb.ready;
+    reverbReady = true;
   })();
-
-  return loadPromise;
+  await reverbPromise;
 }
 
-function disposePlayers() {
-  if (players) {
-    players.dispose();
-    players = null;
+/**
+ * Build or rebuild the audio chain for one row.
+ * Called on first use and whenever the row's sample key changes.
+ */
+async function ensureRowChain(rowId, sampleKey) {
+  await ensureReverb();
+
+  const existing = rowChains.get(rowId);
+  if (existing && existing.sampleKey === sampleKey) return; // already correct
+
+  // Tear down old chain if sample changed.
+  if (existing) {
+    existing.player.dispose();
+    existing.volGain.dispose();
+    existing.revGain.dispose();
   }
-  playersReady = false;
-  loadPromise  = null;
+
+  const url     = BASE_URL + (SAMPLE_CATALOGUE[sampleKey]?.file ?? '');
+  const revGain = new Tone.Gain(0).connect(drumReverb);
+  const volGain = new Tone.Gain(1).toDestination();
+  const player  = new Tone.Player({ url, autostart: false });
+  // Connect: player → volGain (dry) AND player → revGain → reverb (wet)
+  player.connect(volGain);
+  player.connect(revGain);
+  await Tone.loaded();
+
+  rowChains.set(rowId, { player, volGain, revGain, sampleKey });
+}
+
+/**
+ * Ensure chains for all rows in a rows array (called before playback starts).
+ */
+async function ensureAllRowChains(rows) {
+  await Promise.all(rows.map(row => {
+    const sampleKey = row.sample ?? row.rowId;
+    return ensureRowChain(row.rowId, sampleKey);
+  }));
+}
+
+function disposeAllChains() {
+  rowChains.forEach(({ player, volGain, revGain }) => {
+    player.dispose();
+    volGain.dispose();
+    revGain.dispose();
+  });
+  rowChains.clear();
+  if (drumReverb) { drumReverb.dispose(); drumReverb = null; }
+  reverbReady   = false;
+  reverbPromise = null;
 }
 
 // ─── Click synth (no sample needed — stays synthesised for low latency) ───────
@@ -218,26 +236,26 @@ function disposeClickSynth() {
 // ─── Trigger a row using the Players instance ─────────────────────────────────
 
 function triggerRow(row, time, vel = 1.0) {
-  if (!players || !playersReady) return;
+  const chain = rowChains.get(row.rowId);
+  if (!chain) return;
 
-  const rowGain  = (row.volume ?? 80) / 100;
-  const combined = vel * rowGain;
-  const velDb    = combined < 0.01 ? -60 : 20 * Math.log10(combined);
-
-  const sampleKey = row.sample ?? row.rowId;
-  const info      = SAMPLE_CATALOGUE[sampleKey];
-  if (!info) return;
-
-  const playerKey = resolvePlayerKey(sampleKey);
-  if (!playerKey) return;
-
-  const player = players.player(playerKey);
+  const { player, volGain, revGain } = chain;
   if (!player || player.state === 'disposed') return;
 
-  player.volume.value = velDb + (info.volOff ?? 0);
-  // Stop any in-progress playback of this player before restarting.
-  // Tone.Player throws "Start time must be strictly greater than previous start time"
-  // when .start() is called while the buffer is still playing (common at fast tempos).
+  const sampleKey = row.sample ?? row.rowId;
+  const info      = SAMPLE_CATALOGUE[sampleKey] ?? {};
+
+  // ── Volume: step velocity × row volume knob × per-sample dB offset ───────
+  const rowGain  = (row.volume ?? 80) / 100;
+  const combined = vel * rowGain;
+  const volOff   = info.volOff ?? 0;
+  // Convert to linear gain for the Gain node (include the per-sample dB offset).
+  volGain.gain.value = combined < 0.01 ? 0 : combined * Math.pow(10, volOff / 20);
+
+  // ── Reverb: row reverb knob → send gain (0–100 → 0.0–1.0 linear) ─────────
+  revGain.gain.value = (row.reverb ?? 0) / 100;
+
+  // Stop any in-progress playback before restarting.
   if (player.state === 'started') player.stop(time);
   player.start(time);
 }
@@ -268,9 +286,18 @@ export function useDrumSequencer() {
     return () => onStepCbs.delete(cb);
   }, []);
 
-  /** Update the rows reference live — takes effect on the next step pulse. */
+  /** Update the rows reference live — takes effect on the next step pulse.
+   *  Also rebuilds any per-row chains whose sample key has changed. */
   const updateDrumRows = useCallback((rows) => {
     liveRows.current = rows;
+    // Rebuild chains for rows whose sample changed (fire-and-forget).
+    rows.forEach(row => {
+      const sampleKey = row.sample ?? row.rowId;
+      const existing  = rowChains.get(row.rowId);
+      if (existing && existing.sampleKey !== sampleKey) {
+        ensureRowChain(row.rowId, sampleKey);
+      }
+    });
   }, []);
 
   /**
@@ -296,8 +323,11 @@ export function useDrumSequencer() {
       bassPattern:  overrides.bassPattern  ?? 'standard',
     };
 
-    // Build the loop immediately (before the async load) so `.start()` can be
-    // called at transport time 0 before `transport.start()` fires.
+    // Ensure a per-row audio chain exists for every row's current sample.
+    await ensureAllRowChains(rows);
+
+    // Build the loop. triggerRow is synchronous and reads rowChains, which are
+    // now guaranteed to exist after ensureAllRowChains resolves.
     let step = 0;
     seqRef = new Tone.Loop((time) => {
       const currentRows = liveRows.current;
@@ -309,14 +339,17 @@ export function useDrumSequencer() {
           const s = row.steps[currentStep];
 
           if (row.rowId === 'hh') {
-            if (hhStepActive(currentStep, hiHatCadence)) {
+            if (hiHatCadence === 'off') {
+              // No cadence override — use the row's own pattern steps.
+              if (s?.on) triggerRow(row, time, s.vel ?? 1.0);
+            } else if (hhStepActive(currentStep, hiHatCadence)) {
               const vel = currentStep % 4 === 0 ? 1.0 : 0.6;
               triggerRow(row, time, vel);
             }
           } else if (row.rowId === 'bd') {
             const beatSet = BASS_PATTERNS[bassPattern] ?? null;
+            // 'off' bassPattern → beatSet is null → honour only explicit pattern steps.
             if (beatSet === null || s?.on) {
-              // 'off' preset OR the user has explicitly enabled this step — honour the stored pattern
               if (s?.on) triggerRow(row, time, s.vel ?? 1.0);
             } else if (beatSet.has(currentStep)) {
               triggerRow(row, time, 1.0);
@@ -337,24 +370,17 @@ export function useDrumSequencer() {
     const barDurSec  = Tone.Time(`${beatUnit}n`).toSeconds() * beatsPerBar;
     const nowSec     = transport.seconds;
     const posInBar   = nowSec % barDurSec;
-    // If transport hasn't started yet (seconds == 0) or we're right at a bar
-    // boundary, start at 0 so the first beat fires with beat 1 of the track.
     const nextBarSec = posInBar < 0.01
       ? nowSec
       : nowSec + (barDurSec - posInBar);
 
     seqRef.start(nextBarSec);
-
-    // Load samples after registering the loop — triggerRow is a no-op until
-    // playersReady is true, so any steps that fire before load completes are
-    // silently skipped rather than crashing.
-    await ensurePlayers();
   }, []);
 
   const stopDrumSeq = useCallback(() => {
     stopDrumSeqInternal();
     stopClickInternal();
-    disposePlayers();
+    disposeAllChains();
     disposeClickSynth();
     liveRows.current = null;
     onStepCbs.forEach(cb => cb(null));
@@ -400,9 +426,16 @@ export function useDrumSequencer() {
    */
   const previewSample = useCallback(async (sampleKey) => {
     await Tone.start();
-    await ensurePlayers();
-    const mockRow = { sample: sampleKey, volume: 85 };
-    triggerRow(mockRow, Tone.now(), 1.0);
+    // Use a temporary rowId for preview so it doesn't interfere with live rows.
+    const previewRowId = '__preview__';
+    await ensureRowChain(previewRowId, sampleKey);
+    const chain = rowChains.get(previewRowId);
+    if (chain) {
+      chain.volGain.gain.value = 0.85;
+      chain.revGain.gain.value = 0;
+      if (chain.player.state === 'started') chain.player.stop();
+      chain.player.start();
+    }
   }, []);
 
   return { startDrumSeq, stopDrumSeq, updateDrumRows, updateDrumOverrides, startClickSeq, stopClickSeq, onStep, previewSample };
